@@ -85,6 +85,29 @@
       font-size: 0;
     }
 
+    #date-line {
+      display: none;
+      margin-top: 2.2vh;
+      font-size: 3.4vw;
+      line-height: 1.1;
+      font-family: Arial, sans-serif;
+      font-weight: bold;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: currentColor;
+      text-shadow:
+        0 0 8px rgba(255, 226, 142, 0.62),
+        0 0 20px rgba(255, 174, 0, 0.34);
+    }
+
+    body.show-date #date-line {
+      display: block;
+    }
+
+    body.style-flat #date-line {
+      text-shadow: none;
+    }
+
     /*
       One seven-segment digit.
       The width/height values are tuned for iPad mini landscape first. Portrait
@@ -665,6 +688,11 @@
       #status {
         font-size: 4.4vw;
       }
+
+      #date-line {
+        margin-top: 1.8vh;
+        font-size: 4vw;
+      }
     }
   </style>
 </head>
@@ -695,6 +723,7 @@
           </div>
         </div>
       </div>
+      <div id="date-line"></div>
     </div>
   </div>
 
@@ -740,6 +769,13 @@
       </div>
     </div>
     <div class="settings-row">
+      <div class="settings-label" data-i18n="date">Date</div>
+      <div class="settings-options" id="date-options">
+        <span class="option-button" data-date="off" data-i18n="off">Off</span>
+        <span class="option-button" data-date="on" data-i18n="on">On</span>
+      </div>
+    </div>
+    <div class="settings-row">
       <div class="settings-label" data-i18n="colonBlink">Colon Blink</div>
       <div class="settings-options" id="blink-options">
         <span class="option-button" data-blink="on" data-i18n="on">On</span>
@@ -779,6 +815,7 @@
       var body = document.body;
       var clockNode = document.getElementById("clock");
       var colonNode = document.getElementById("colon");
+      var dateNode = document.getElementById("date-line");
       var statusNode = document.getElementById("status");
       var settingsButton = document.getElementById("settings-button");
       var settingsPanel = document.getElementById("settings-panel");
@@ -795,6 +832,14 @@
       var styles = ["retro", "flat"];
       var weights = ["thin", "bold"];
       var languages = ["en", "ru"];
+      var dayNames = {
+        en: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+        ru: ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"]
+      };
+      var monthNames = {
+        en: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+        ru: ["Января", "Февраля", "Марта", "Апреля", "Мая", "Июня", "Июля", "Августа", "Сентября", "Октября", "Ноября", "Декабря"]
+      };
       var labels = {
         en: {
           settingsTitle: "Clock Settings",
@@ -813,6 +858,7 @@
           thin: "Thin",
           bold: "Bold",
           seconds: "Seconds",
+          date: "Date",
           colonBlink: "Colon Blink",
           nightDim: "Night Dim",
           on: "On",
@@ -825,6 +871,8 @@
           statusWeight: "weight: ",
           statusSecondsOn: "seconds on",
           statusSecondsOff: "seconds off",
+          statusDateOn: "date on",
+          statusDateOff: "date off",
           statusBlinkOn: "blink on",
           statusBlinkOff: "blink off",
           statusDimAuto: "night dim auto",
@@ -847,6 +895,7 @@
           thin: "Тонкий",
           bold: "Толстый",
           seconds: "Секунды",
+          date: "Дата",
           colonBlink: "Мигание",
           nightDim: "Ночной режим",
           on: "Вкл",
@@ -859,6 +908,8 @@
           statusWeight: "толщина: ",
           statusSecondsOn: "секунды включены",
           statusSecondsOff: "секунды выключены",
+          statusDateOn: "дата включена",
+          statusDateOff: "дата выключена",
           statusBlinkOn: "мигание включено",
           statusBlinkOff: "мигание выключено",
           statusDimAuto: "ночной режим авто",
@@ -909,6 +960,7 @@
           return {
             theme: "amber",
             showSeconds: false,
+            showDate: false,
             style: "retro",
             weight: "thin",
             language: "en",
@@ -923,6 +975,7 @@
           return {
             theme: "amber",
             showSeconds: false,
+            showDate: false,
             style: "retro",
             weight: "thin",
             language: "en",
@@ -951,6 +1004,7 @@
         }
 
         settings.showSeconds = !!settings.showSeconds;
+        settings.showDate = !!settings.showDate;
         settings.blink = settings.blink !== false;
         settings.autoDim = settings.autoDim !== false;
       }
@@ -1004,6 +1058,10 @@
 
       function applySeconds() {
         setClassFlag("show-seconds", settings.showSeconds);
+      }
+
+      function applyDate() {
+        setClassFlag("show-date", settings.showDate);
       }
 
       function applyStyle() {
@@ -1083,6 +1141,7 @@
         settings[name] = value;
         applyTheme();
         applySeconds();
+        applyDate();
         applyStyle();
         applyWeight();
         applyLanguage();
@@ -1111,6 +1170,7 @@
         setOptionActive("theme-options", "data-theme", settings.theme);
         setOptionActive("weight-options", "data-weight", settings.weight);
         setOptionActive("seconds-options", "data-seconds", settings.showSeconds ? "on" : "off");
+        setOptionActive("date-options", "data-date", settings.showDate ? "on" : "off");
         setOptionActive("blink-options", "data-blink", settings.blink ? "on" : "off");
         setOptionActive("dim-options", "data-dim", settings.autoDim ? "auto" : "off");
       }
@@ -1128,10 +1188,11 @@
         var theme = target.getAttribute("data-theme");
         var weight = target.getAttribute("data-weight");
         var seconds = target.getAttribute("data-seconds");
+        var date = target.getAttribute("data-date");
         var blink = target.getAttribute("data-blink");
         var dim = target.getAttribute("data-dim");
 
-        if (!language && !style && !theme && !weight && !seconds && !blink && !dim) {
+        if (!language && !style && !theme && !weight && !seconds && !date && !blink && !dim) {
           return;
         }
 
@@ -1156,6 +1217,9 @@
         } else if (seconds) {
           setSetting("showSeconds", seconds === "on");
           showStatus(seconds === "on" ? getLabel("statusSecondsOn") : getLabel("statusSecondsOff"));
+        } else if (date) {
+          setSetting("showDate", date === "on");
+          showStatus(date === "on" ? getLabel("statusDateOn") : getLabel("statusDateOff"));
         } else if (blink) {
           setSetting("blink", blink === "on");
           showStatus(blink === "on" ? getLabel("statusBlinkOn") : getLabel("statusBlinkOff"));
@@ -1208,6 +1272,13 @@
         paintDigit(digits.so, seconds.charAt(1));
       }
 
+      function drawDate(now) {
+        var lang = settings.language === "ru" ? "ru" : "en";
+        var text = dayNames[lang][now.getDay()] + " " + now.getDate() + " " + monthNames[lang][now.getMonth()];
+
+        dateNode.innerHTML = text;
+      }
+
       /* Move the whole clock by one pixel according to shiftPositions. */
       function updateShift() {
         var position = shiftPositions[shiftIndex];
@@ -1222,6 +1293,7 @@
         var now = new Date();
 
         drawTime(now);
+        drawDate(now);
         applyDim(now);
         if (settings.blink) {
           colonNode.className = now.getSeconds() % 2 === 0 ? "" : "blink";
@@ -1300,6 +1372,7 @@
       normalizeSettings();
       applyTheme();
       applySeconds();
+      applyDate();
       applyStyle();
       applyWeight();
       applyLanguage();
