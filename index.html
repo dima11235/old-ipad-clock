@@ -444,31 +444,37 @@
 
     @media (orientation: portrait) {
       .wrap {
+        padding-left: 0;
+        padding-right: 0;
         -webkit-transform: translateY(-3vh);
         transform: translateY(-3vh);
       }
 
       #clock {
-        margin-left: -0.7vw;
+        margin-left: 0;
+        padding-left: 2vw;
+        padding-right: 2vw;
+        max-width: 94vw;
+        box-sizing: border-box;
       }
 
       .digit {
-        width: 20vw;
-        height: 35.4vw;
-        margin: 0 0.66vw;
+        width: 18.2vw;
+        height: 32.2vw;
+        margin: 0 0.48vw;
       }
 
       #colon {
-        width: 6.1vw;
-        height: 35.4vw;
-        margin: 0 0.76vw;
+        width: 5.2vw;
+        height: 32.2vw;
+        margin: 0 0.52vw;
       }
 
       #colon:before,
       #colon:after {
-        width: 2.12vw;
-        height: 2.12vw;
-        margin-left: -1.06vw;
+        width: 1.9vw;
+        height: 1.9vw;
+        margin-left: -0.95vw;
       }
 
       body.show-seconds .seconds .digit {
