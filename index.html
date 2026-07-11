@@ -49,7 +49,7 @@
     }
 
     body.style-flat #clock {
-      padding: 0;
+      padding: 1vh 0;
       border-radius: 0;
       background: none;
       box-shadow: none;
@@ -84,8 +84,45 @@
     }
 
     body.style-flat .digit .seg.on {
-      box-shadow:
-        0 0 6px rgba(255, 196, 77, 0.28);
+      box-shadow: none;
+      border-radius: 2px;
+    }
+
+    body.style-flat .digit .seg {
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 2px;
+    }
+
+    body.style-flat #colon:before,
+    body.style-flat #colon:after {
+      box-shadow: none;
+      border-radius: 2px;
+    }
+
+    body.style-flat .digit {
+      margin: 0 0.45vw;
+    }
+
+    body.style-flat #colon {
+      margin: 0 0.45vw;
+    }
+
+    body.style-flat #clock:before {
+      content: "";
+      display: block;
+      width: 100%;
+      height: 1px;
+      margin-bottom: 2.2vh;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    body.style-flat #clock:after {
+      content: "";
+      display: block;
+      width: 100%;
+      height: 1px;
+      margin-top: 2.2vh;
+      background: rgba(255, 255, 255, 0.08);
     }
 
     .seg-a,
@@ -370,6 +407,26 @@
     body.theme-ice {
       background: #050709;
       color: #98efff;
+    }
+
+    body.style-flat.theme-amber {
+      background: #101010;
+      color: #ffd166;
+    }
+
+    body.style-flat.theme-red {
+      background: #120d0d;
+      color: #ff7b72;
+    }
+
+    body.style-flat.theme-green {
+      background: #0c100d;
+      color: #8df5a6;
+    }
+
+    body.style-flat.theme-ice {
+      background: #0c1013;
+      color: #9ad7ff;
     }
 
     body.dim #clock {
