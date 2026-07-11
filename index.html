@@ -48,6 +48,13 @@
       transform: translate(0, 0);
     }
 
+    body.style-flat #clock {
+      padding: 0;
+      border-radius: 0;
+      background: none;
+      box-shadow: none;
+    }
+
     #time {
       white-space: nowrap;
     }
@@ -73,6 +80,11 @@
       box-shadow:
         0 0 10px rgba(255, 196, 77, 0.55),
         0 0 24px rgba(255, 140, 0, 0.32);
+    }
+
+    body.style-flat .digit .seg.on {
+      box-shadow:
+        0 0 6px rgba(255, 196, 77, 0.28);
     }
 
     .seg-a,
@@ -223,6 +235,102 @@
       transform: translate(-50%, 0);
     }
 
+    #settings-button {
+      position: fixed;
+      top: 2.5vh;
+      right: 3vw;
+      z-index: 20;
+      width: 44px;
+      height: 44px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.25);
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 22px;
+      line-height: 42px;
+      text-align: center;
+      cursor: pointer;
+    }
+
+    #settings-panel {
+      position: fixed;
+      top: 9vh;
+      right: 3vw;
+      z-index: 21;
+      width: 74vw;
+      max-width: 420px;
+      padding: 18px 18px 14px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 18px;
+      background: rgba(10, 10, 10, 0.94);
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+      text-align: left;
+      opacity: 0;
+      visibility: hidden;
+      -webkit-transform: translate(0, -10px);
+      transform: translate(0, -10px);
+      -webkit-transition: opacity 0.2s ease, -webkit-transform 0.2s ease;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    body.settings-open #settings-panel {
+      opacity: 1;
+      visibility: visible;
+      -webkit-transform: translate(0, 0);
+      transform: translate(0, 0);
+    }
+
+    .settings-title {
+      margin: 0 0 12px;
+      font-size: 14px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.76);
+    }
+
+    .settings-row {
+      margin-bottom: 12px;
+    }
+
+    .settings-label {
+      margin-bottom: 7px;
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.56);
+    }
+
+    .settings-options {
+      font-size: 0;
+    }
+
+    .option-button {
+      display: inline-block;
+      margin: 0 8px 8px 0;
+      padding: 10px 12px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.04);
+      color: rgba(255, 255, 255, 0.84);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+
+    .option-button.active {
+      border-color: currentColor;
+      background: rgba(255, 255, 255, 0.08);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+    }
+
+    .settings-hint {
+      margin-top: 2px;
+      font-size: 11px;
+      line-height: 1.45;
+      color: rgba(255, 255, 255, 0.42);
+    }
+
     body.theme-amber {
       background: #070707;
       color: #ffc44d;
@@ -305,6 +413,48 @@
       </div>
     </div>
   </div>
+  <div id="settings-button">+</div>
+  <div id="settings-panel">
+    <div class="settings-title">Clock Settings</div>
+    <div class="settings-row">
+      <div class="settings-label">Style</div>
+      <div class="settings-options" id="style-options">
+        <span class="option-button" data-style="retro">Retro</span>
+        <span class="option-button" data-style="flat">Flat</span>
+      </div>
+    </div>
+    <div class="settings-row">
+      <div class="settings-label">Theme</div>
+      <div class="settings-options" id="theme-options">
+        <span class="option-button" data-theme="amber">Amber</span>
+        <span class="option-button" data-theme="red">Red</span>
+        <span class="option-button" data-theme="green">Green</span>
+        <span class="option-button" data-theme="ice">Ice</span>
+      </div>
+    </div>
+    <div class="settings-row">
+      <div class="settings-label">Seconds</div>
+      <div class="settings-options" id="seconds-options">
+        <span class="option-button" data-seconds="off">Off</span>
+        <span class="option-button" data-seconds="on">On</span>
+      </div>
+    </div>
+    <div class="settings-row">
+      <div class="settings-label">Colon Blink</div>
+      <div class="settings-options" id="blink-options">
+        <span class="option-button" data-blink="on">On</span>
+        <span class="option-button" data-blink="off">Off</span>
+      </div>
+    </div>
+    <div class="settings-row">
+      <div class="settings-label">Night Dim</div>
+      <div class="settings-options" id="dim-options">
+        <span class="option-button" data-dim="auto">Auto</span>
+        <span class="option-button" data-dim="off">Off</span>
+      </div>
+    </div>
+    <div class="settings-hint">Tap plus to open settings. Tap screen outside the panel to switch themes quickly. Hold on the clock to toggle seconds.</div>
+  </div>
   <div id="status"></div>
 
   <script>
@@ -326,6 +476,8 @@
       var clockNode = document.getElementById("clock");
       var colonNode = document.getElementById("colon");
       var statusNode = document.getElementById("status");
+      var settingsButton = document.getElementById("settings-button");
+      var settingsPanel = document.getElementById("settings-panel");
       var digits = {
         ht: document.getElementById("hours-tens"),
         ho: document.getElementById("hours-ones"),
@@ -336,6 +488,7 @@
       };
 
       var themes = ["amber", "red", "green", "ice"];
+      var styles = ["retro", "flat"];
       var settings = loadSettings();
       var holdTimer = null;
       var holdTriggered = false;
@@ -369,7 +522,10 @@
         if (!raw) {
           return {
             theme: "amber",
-            showSeconds: false
+            showSeconds: false,
+            style: "retro",
+            blink: true,
+            autoDim: true
           };
         }
 
@@ -378,9 +534,38 @@
         } catch (error) {
           return {
             theme: "amber",
-            showSeconds: false
+            showSeconds: false,
+            style: "retro",
+            blink: true,
+            autoDim: true
           };
         }
+      }
+
+      function normalizeSettings() {
+        if (!hasValue(themes, settings.theme)) {
+          settings.theme = "amber";
+        }
+
+        if (!hasValue(styles, settings.style)) {
+          settings.style = "retro";
+        }
+
+        settings.showSeconds = !!settings.showSeconds;
+        settings.blink = settings.blink !== false;
+        settings.autoDim = settings.autoDim !== false;
+      }
+
+      function hasValue(list, value) {
+        var i;
+
+        for (i = 0; i < list.length; i++) {
+          if (list[i] === value) {
+            return true;
+          }
+        }
+
+        return false;
       }
 
       function saveSettings() {
@@ -416,9 +601,13 @@
         setClassFlag("show-seconds", settings.showSeconds);
       }
 
+      function applyStyle() {
+        setClassFlag("style-flat", settings.style === "flat");
+      }
+
       function applyDim(now) {
         var hour = now.getHours();
-        setClassFlag("dim", hour >= 22 || hour < 7);
+        setClassFlag("dim", settings.autoDim && (hour >= 22 || hour < 7));
       }
 
       function showStatus(text) {
@@ -449,6 +638,7 @@
         applyTheme();
         saveSettings();
         showStatus(settings.theme + " theme");
+        refreshSettingsUI();
       }
 
       function toggleSeconds() {
@@ -456,6 +646,79 @@
         applySeconds();
         saveSettings();
         showStatus(settings.showSeconds ? "seconds on" : "seconds off");
+        refreshSettingsUI();
+      }
+
+      function setSetting(name, value) {
+        settings[name] = value;
+        applyTheme();
+        applySeconds();
+        applyStyle();
+        saveSettings();
+        refreshSettingsUI();
+      }
+
+      function setOptionActive(containerId, attr, value) {
+        var container = document.getElementById(containerId);
+        var buttons = container.getElementsByTagName("span");
+        var i;
+
+        for (i = 0; i < buttons.length; i++) {
+          if (buttons[i].getAttribute(attr) === value) {
+            buttons[i].className = "option-button active";
+          } else {
+            buttons[i].className = "option-button";
+          }
+        }
+      }
+
+      function refreshSettingsUI() {
+        setOptionActive("style-options", "data-style", settings.style);
+        setOptionActive("theme-options", "data-theme", settings.theme);
+        setOptionActive("seconds-options", "data-seconds", settings.showSeconds ? "on" : "off");
+        setOptionActive("blink-options", "data-blink", settings.blink ? "on" : "off");
+        setOptionActive("dim-options", "data-dim", settings.autoDim ? "auto" : "off");
+      }
+
+      function toggleSettingsPanel(forceOpen) {
+        var open = typeof forceOpen === "boolean" ? forceOpen : body.className.indexOf("settings-open") === -1;
+        setClassFlag("settings-open", open);
+      }
+
+      function handleSettingsClick(event) {
+        var target = event.target || event.srcElement;
+        var style = target.getAttribute("data-style");
+        var theme = target.getAttribute("data-theme");
+        var seconds = target.getAttribute("data-seconds");
+        var blink = target.getAttribute("data-blink");
+        var dim = target.getAttribute("data-dim");
+
+        if (!style && !theme && !seconds && !blink && !dim) {
+          return;
+        }
+
+        event.preventDefault();
+        event.cancelBubble = true;
+        if (event.stopPropagation) {
+          event.stopPropagation();
+        }
+
+        if (style) {
+          setSetting("style", style);
+          showStatus(style + " style");
+        } else if (theme) {
+          setSetting("theme", theme);
+          showStatus(theme + " theme");
+        } else if (seconds) {
+          setSetting("showSeconds", seconds === "on");
+          showStatus(seconds === "on" ? "seconds on" : "seconds off");
+        } else if (blink) {
+          setSetting("blink", blink === "on");
+          showStatus(blink === "on" ? "blink on" : "blink off");
+        } else if (dim) {
+          setSetting("autoDim", dim === "auto");
+          showStatus(dim === "auto" ? "night dim auto" : "night dim off");
+        }
       }
 
       function paintDigit(node, value) {
@@ -500,11 +763,21 @@
 
         drawTime(now);
         applyDim(now);
-        colonNode.className = now.getSeconds() % 2 === 0 ? "" : "blink";
+        if (settings.blink) {
+          colonNode.className = now.getSeconds() % 2 === 0 ? "" : "blink";
+        } else {
+          colonNode.className = "";
+        }
       }
 
       function startHold(event) {
+        var target = event.target || event.srcElement;
+
         if (event && event.touches && event.touches.length > 1) {
+          return;
+        }
+
+        if (target === settingsButton || isInsideSettings(target)) {
           return;
         }
 
@@ -523,6 +796,8 @@
       }
 
       function handleTap(event) {
+        var target = event.target || event.srcElement;
+
         if (event) {
           event.preventDefault();
         }
@@ -532,16 +807,49 @@
           return;
         }
 
+        if (target === settingsButton) {
+          toggleSettingsPanel();
+          return;
+        }
+
+        if (isInsideSettings(target)) {
+          return;
+        }
+
+        if (body.className.indexOf("settings-open") !== -1) {
+          toggleSettingsPanel(false);
+          return;
+        }
+
         cycleTheme();
       }
 
+      function isInsideSettings(node) {
+        while (node) {
+          if (node === settingsPanel) {
+            return true;
+          }
+          node = node.parentNode;
+        }
+        return false;
+      }
+
+      normalizeSettings();
       applyTheme();
       applySeconds();
+      applyStyle();
+      refreshSettingsUI();
       updateShift();
       updateClock();
       setInterval(updateClock, 250);
       setInterval(updateShift, 180000);
 
+      settingsPanel.onclick = handleSettingsClick;
+      settingsPanel.ontouchstart = function (event) {
+        if (event && event.stopPropagation) {
+          event.stopPropagation();
+        }
+      };
       document.addEventListener("touchstart", startHold, false);
       document.addEventListener("touchend", endHold, false);
       document.addEventListener("touchcancel", endHold, false);
