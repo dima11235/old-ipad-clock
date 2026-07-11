@@ -36,11 +36,27 @@
     #time {
       font-size: 36vw;
       line-height: 0.82;
-      font-weight: 100;
-      letter-spacing: -0.08em;
+      font-weight: 300;
+      letter-spacing: -0.03em;
       white-space: nowrap;
       -webkit-transform: translate(0, 0);
       transform: translate(0, 0);
+    }
+
+    #hours,
+    #minutes,
+    #colon {
+      display: inline-block;
+    }
+
+    #hours,
+    #minutes {
+      min-width: 1.8em;
+    }
+
+    #colon {
+      width: 0.42em;
+      text-align: center;
     }
 
     #seconds {
@@ -55,7 +71,7 @@
     }
 
     body.show-seconds #time {
-      font-size: 30vw;
+      font-size: 29vw;
     }
 
     body.show-seconds #seconds {
