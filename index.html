@@ -609,52 +609,59 @@
   <!-- The settings UI is intentionally simple and touch-friendly for old Safari. -->
   <div id="settings-button">+</div>
   <div id="settings-panel">
-    <div class="settings-title">Clock Settings</div>
+    <div class="settings-title" data-i18n="settingsTitle">Clock Settings</div>
     <div class="settings-row">
-      <div class="settings-label">Style</div>
+      <div class="settings-label" data-i18n="language">Language</div>
+      <div class="settings-options" id="language-options">
+        <span class="option-button" data-language="en" data-i18n="english">English</span>
+        <span class="option-button" data-language="ru" data-i18n="russian">Russian</span>
+      </div>
+    </div>
+    <div class="settings-row">
+      <div class="settings-label" data-i18n="style">Style</div>
       <div class="settings-options" id="style-options">
-        <span class="option-button" data-style="retro">Retro</span>
-        <span class="option-button" data-style="flat">Flat</span>
+        <span class="option-button" data-style="retro" data-i18n="retro">Retro</span>
+        <span class="option-button" data-style="flat" data-i18n="flat">Flat</span>
       </div>
     </div>
     <div class="settings-row">
-      <div class="settings-label">Theme</div>
+      <div class="settings-label" data-i18n="theme">Theme</div>
       <div class="settings-options" id="theme-options">
-        <span class="option-button" data-theme="amber">Amber</span>
-        <span class="option-button" data-theme="red">Red</span>
-        <span class="option-button" data-theme="green">Green</span>
-        <span class="option-button" data-theme="ice">Ice</span>
+        <span class="option-button" data-theme="amber" data-i18n="amber">Amber</span>
+        <span class="option-button" data-theme="red" data-i18n="red">Red</span>
+        <span class="option-button" data-theme="green" data-i18n="green">Green</span>
+        <span class="option-button" data-theme="ice" data-i18n="ice">Ice</span>
       </div>
     </div>
     <div class="settings-row">
-      <div class="settings-label">Weight</div>
+      <div class="settings-label" data-i18n="weight">Weight</div>
       <div class="settings-options" id="weight-options">
-        <span class="option-button" data-weight="thin">Thin</span>
-        <span class="option-button" data-weight="bold">Bold</span>
+        <span class="option-button" data-weight="thin" data-i18n="thin">Thin</span>
+        <span class="option-button" data-weight="bold" data-i18n="bold">Bold</span>
       </div>
     </div>
     <div class="settings-row">
-      <div class="settings-label">Seconds</div>
+      <div class="settings-label" data-i18n="seconds">Seconds</div>
       <div class="settings-options" id="seconds-options">
-        <span class="option-button" data-seconds="off">Off</span>
-        <span class="option-button" data-seconds="on">On</span>
+        <span class="option-button" data-seconds="off" data-i18n="off">Off</span>
+        <span class="option-button" data-seconds="on" data-i18n="on">On</span>
       </div>
     </div>
     <div class="settings-row">
-      <div class="settings-label">Colon Blink</div>
+      <div class="settings-label" data-i18n="colonBlink">Colon Blink</div>
       <div class="settings-options" id="blink-options">
-        <span class="option-button" data-blink="on">On</span>
-        <span class="option-button" data-blink="off">Off</span>
+        <span class="option-button" data-blink="on" data-i18n="on">On</span>
+        <span class="option-button" data-blink="off" data-i18n="off">Off</span>
       </div>
     </div>
     <div class="settings-row">
-      <div class="settings-label">Night Dim</div>
+      <div class="settings-label" data-i18n="nightDim">Night Dim</div>
       <div class="settings-options" id="dim-options">
-        <span class="option-button" data-dim="auto">Auto</span>
-        <span class="option-button" data-dim="off">Off</span>
+        <span class="option-button" data-dim="auto" data-i18n="auto">Auto</span>
+        <span class="option-button" data-dim="off" data-i18n="off">Off</span>
       </div>
     </div>
-    <div class="settings-hint">Tap plus to open settings. Tap screen outside the panel to switch themes quickly. Hold on the clock to toggle seconds.</div>
+    <div class="settings-hint" data-i18n="hint">Tap plus to open settings. Tap screen outside the panel to switch themes quickly. Hold on the clock to toggle seconds.</div>
   </div>
   <div id="status"></div>
 
@@ -695,6 +702,77 @@
       var themes = ["amber", "red", "green", "ice"];
       var styles = ["retro", "flat"];
       var weights = ["thin", "bold"];
+      var languages = ["en", "ru"];
+      var labels = {
+        en: {
+          settingsTitle: "Clock Settings",
+          language: "Language",
+          english: "English",
+          russian: "Russian",
+          style: "Style",
+          retro: "Retro",
+          flat: "Flat",
+          theme: "Theme",
+          amber: "Amber",
+          red: "Red",
+          green: "Green",
+          ice: "Ice",
+          weight: "Weight",
+          thin: "Thin",
+          bold: "Bold",
+          seconds: "Seconds",
+          colonBlink: "Colon Blink",
+          nightDim: "Night Dim",
+          on: "On",
+          off: "Off",
+          auto: "Auto",
+          hint: "Tap plus to open settings. Tap screen outside the panel to switch themes quickly. Hold on the clock to toggle seconds.",
+          statusLanguage: "language: ",
+          statusStyle: "style: ",
+          statusTheme: "theme: ",
+          statusWeight: "weight: ",
+          statusSecondsOn: "seconds on",
+          statusSecondsOff: "seconds off",
+          statusBlinkOn: "blink on",
+          statusBlinkOff: "blink off",
+          statusDimAuto: "night dim auto",
+          statusDimOff: "night dim off"
+        },
+        ru: {
+          settingsTitle: "Настройки часов",
+          language: "Язык",
+          english: "Английский",
+          russian: "Русский",
+          style: "Стиль",
+          retro: "Ретро",
+          flat: "Плоский",
+          theme: "Цвет",
+          amber: "Янтарь",
+          red: "Красный",
+          green: "Зеленый",
+          ice: "Лед",
+          weight: "Толщина",
+          thin: "Тонкий",
+          bold: "Толстый",
+          seconds: "Секунды",
+          colonBlink: "Мигание",
+          nightDim: "Ночной режим",
+          on: "Вкл",
+          off: "Выкл",
+          auto: "Авто",
+          hint: "Нажмите плюс для настроек. Нажатие по часам меняет цвет. Долгое нажатие включает или выключает секунды.",
+          statusLanguage: "язык: ",
+          statusStyle: "стиль: ",
+          statusTheme: "цвет: ",
+          statusWeight: "толщина: ",
+          statusSecondsOn: "секунды включены",
+          statusSecondsOff: "секунды выключены",
+          statusBlinkOn: "мигание включено",
+          statusBlinkOff: "мигание выключено",
+          statusDimAuto: "ночной режим авто",
+          statusDimOff: "ночной режим выкл"
+        }
+      };
       var settings = loadSettings();
       var holdTimer = null;
       var holdTriggered = false;
@@ -741,6 +819,7 @@
             showSeconds: false,
             style: "retro",
             weight: "thin",
+            language: "en",
             blink: true,
             autoDim: true
           };
@@ -754,6 +833,7 @@
             showSeconds: false,
             style: "retro",
             weight: "thin",
+            language: "en",
             blink: true,
             autoDim: true
           };
@@ -772,6 +852,10 @@
 
         if (!hasValue(weights, settings.weight)) {
           settings.weight = "thin";
+        }
+
+        if (!hasValue(languages, settings.language)) {
+          settings.language = "en";
         }
 
         settings.showSeconds = !!settings.showSeconds;
@@ -838,6 +922,23 @@
         setClassFlag("weight-bold", settings.weight === "bold");
       }
 
+      function getLabel(key) {
+        return labels[settings.language][key] || labels.en[key] || key;
+      }
+
+      function applyLanguage() {
+        var nodes = document.getElementsByTagName("*");
+        var i;
+        var key;
+
+        for (i = 0; i < nodes.length; i++) {
+          key = nodes[i].getAttribute("data-i18n");
+          if (key) {
+            nodes[i].innerHTML = getLabel(key);
+          }
+        }
+      }
+
       function applyDim(now) {
         var hour = now.getHours();
         setClassFlag("dim", settings.autoDim && (hour >= 22 || hour < 7));
@@ -872,7 +973,7 @@
         settings.theme = themes[(index + 1) % themes.length];
         applyTheme();
         saveSettings();
-        showStatus(settings.theme + " theme");
+        showStatus(getLabel("statusTheme") + getLabel(settings.theme));
         refreshSettingsUI();
       }
 
@@ -881,7 +982,7 @@
         settings.showSeconds = !settings.showSeconds;
         applySeconds();
         saveSettings();
-        showStatus(settings.showSeconds ? "seconds on" : "seconds off");
+        showStatus(settings.showSeconds ? getLabel("statusSecondsOn") : getLabel("statusSecondsOff"));
         refreshSettingsUI();
       }
 
@@ -892,6 +993,7 @@
         applySeconds();
         applyStyle();
         applyWeight();
+        applyLanguage();
         saveSettings();
         refreshSettingsUI();
       }
@@ -912,6 +1014,7 @@
       }
 
       function refreshSettingsUI() {
+        setOptionActive("language-options", "data-language", settings.language);
         setOptionActive("style-options", "data-style", settings.style);
         setOptionActive("theme-options", "data-theme", settings.theme);
         setOptionActive("weight-options", "data-weight", settings.weight);
@@ -928,6 +1031,7 @@
       /* Read data-* attributes from the clicked settings option and apply it. */
       function handleSettingsClick(event) {
         var target = event.target || event.srcElement;
+        var language = target.getAttribute("data-language");
         var style = target.getAttribute("data-style");
         var theme = target.getAttribute("data-theme");
         var weight = target.getAttribute("data-weight");
@@ -935,7 +1039,7 @@
         var blink = target.getAttribute("data-blink");
         var dim = target.getAttribute("data-dim");
 
-        if (!style && !theme && !weight && !seconds && !blink && !dim) {
+        if (!language && !style && !theme && !weight && !seconds && !blink && !dim) {
           return;
         }
 
@@ -945,24 +1049,27 @@
           event.stopPropagation();
         }
 
-        if (style) {
+        if (language) {
+          setSetting("language", language);
+          showStatus(getLabel("statusLanguage") + getLabel(language === "en" ? "english" : "russian"));
+        } else if (style) {
           setSetting("style", style);
-          showStatus(style + " style");
+          showStatus(getLabel("statusStyle") + getLabel(style));
         } else if (theme) {
           setSetting("theme", theme);
-          showStatus(theme + " theme");
+          showStatus(getLabel("statusTheme") + getLabel(theme));
         } else if (weight) {
           setSetting("weight", weight);
-          showStatus(weight + " weight");
+          showStatus(getLabel("statusWeight") + getLabel(weight));
         } else if (seconds) {
           setSetting("showSeconds", seconds === "on");
-          showStatus(seconds === "on" ? "seconds on" : "seconds off");
+          showStatus(seconds === "on" ? getLabel("statusSecondsOn") : getLabel("statusSecondsOff"));
         } else if (blink) {
           setSetting("blink", blink === "on");
-          showStatus(blink === "on" ? "blink on" : "blink off");
+          showStatus(blink === "on" ? getLabel("statusBlinkOn") : getLabel("statusBlinkOff"));
         } else if (dim) {
           setSetting("autoDim", dim === "auto");
-          showStatus(dim === "auto" ? "night dim auto" : "night dim off");
+          showStatus(dim === "auto" ? getLabel("statusDimAuto") : getLabel("statusDimOff"));
         }
       }
 
@@ -1101,6 +1208,7 @@
       applySeconds();
       applyStyle();
       applyWeight();
+      applyLanguage();
       refreshSettingsUI();
       updateShift();
       updateClock();
