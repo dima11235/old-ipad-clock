@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html manifest="clock.appcache">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="format-detection" content="telephone=no">
+  <title>iPad Clock</title>
+  <style>
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #050505;
+      color: #f4f1e8;
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      display: table;
+      text-align: center;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .wrap {
+      display: table-cell;
+      vertical-align: middle;
+      padding: 4vh 4vw;
+    }
+
+    #time {
+      font-size: 27vw;
+      line-height: 0.9;
+      font-weight: 200;
+      letter-spacing: -0.05em;
+      white-space: nowrap;
+    }
+
+    #seconds {
+      display: inline-block;
+      width: 0.9em;
+      font-size: 0.34em;
+      vertical-align: top;
+      padding-top: 0.18em;
+      opacity: 0.72;
+    }
+
+    #date {
+      margin-top: 3vh;
+      font-size: 4.3vw;
+      font-weight: 400;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      opacity: 0.72;
+    }
+
+    .blink {
+      opacity: 0.4;
+    }
+
+    @media (orientation: portrait) {
+      #time {
+        font-size: 29vw;
+      }
+
+      #date {
+        font-size: 5vw;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div id="time">
+      <span id="hours">00</span>
+      <span id="colon">:</span>
+      <span id="minutes">00</span>
+      <span id="seconds">00</span>
+    </div>
+    <div id="date">Loading...</div>
+  </div>
+
+  <script>
+    (function () {
+      var days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+      var months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+      var hoursNode = document.getElementById("hours");
+      var minutesNode = document.getElementById("minutes");
+      var secondsNode = document.getElementById("seconds");
+      var colonNode = document.getElementById("colon");
+      var dateNode = document.getElementById("date");
+
+      function pad(value) {
+        return value < 10 ? "0" + value : String(value);
+      }
+
+      function updateClock() {
+        var now = new Date();
+
+        hoursNode.innerHTML = pad(now.getHours());
+        minutesNode.innerHTML = pad(now.getMinutes());
+        secondsNode.innerHTML = pad(now.getSeconds());
+        dateNode.innerHTML = days[now.getDay()] + " " + now.getDate() + " " + months[now.getMonth()];
+
+        if (now.getSeconds() % 2 === 0) {
+          colonNode.className = "";
+        } else {
+          colonNode.className = "blink";
+        }
+      }
+
+      updateClock();
+      setInterval(updateClock, 250);
+
+      if (window.applicationCache) {
+        window.applicationCache.addEventListener("updateready", function () {
+          try {
+            window.applicationCache.swapCache();
+            window.location.reload();
+          } catch (error) {}
+        }, false);
+      }
+    })();
+  </script>
+</body>
+</html>
