@@ -32,29 +32,11 @@
     }
 
     #time {
-      font-size: 27vw;
-      line-height: 0.9;
-      font-weight: 200;
-      letter-spacing: -0.05em;
+      font-size: 36vw;
+      line-height: 0.82;
+      font-weight: 100;
+      letter-spacing: -0.08em;
       white-space: nowrap;
-    }
-
-    #seconds {
-      display: inline-block;
-      width: 0.9em;
-      font-size: 0.34em;
-      vertical-align: top;
-      padding-top: 0.18em;
-      opacity: 0.72;
-    }
-
-    #date {
-      margin-top: 3vh;
-      font-size: 4.3vw;
-      font-weight: 400;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      opacity: 0.72;
     }
 
     .blink {
@@ -63,36 +45,25 @@
 
     @media (orientation: portrait) {
       #time {
-        font-size: 29vw;
-      }
-
-      #date {
-        font-size: 5vw;
+        font-size: 40vw;
       }
     }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div id="time">
-      <span id="hours">00</span>
-      <span id="colon">:</span>
-      <span id="minutes">00</span>
-      <span id="seconds">00</span>
+    <div class="wrap">
+      <div id="time">
+        <span id="hours">00</span>
+        <span id="colon">:</span>
+        <span id="minutes">00</span>
+      </div>
     </div>
-    <div id="date">Loading...</div>
-  </div>
 
   <script>
     (function () {
-      var days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-      var months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-
       var hoursNode = document.getElementById("hours");
       var minutesNode = document.getElementById("minutes");
-      var secondsNode = document.getElementById("seconds");
       var colonNode = document.getElementById("colon");
-      var dateNode = document.getElementById("date");
 
       function pad(value) {
         return value < 10 ? "0" + value : String(value);
@@ -103,8 +74,6 @@
 
         hoursNode.innerHTML = pad(now.getHours());
         minutesNode.innerHTML = pad(now.getMinutes());
-        secondsNode.innerHTML = pad(now.getSeconds());
-        dateNode.innerHTML = days[now.getDay()] + " " + now.getDate() + " " + months[now.getMonth()];
 
         if (now.getSeconds() % 2 === 0) {
           colonNode.className = "";
