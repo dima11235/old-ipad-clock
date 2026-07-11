@@ -107,17 +107,21 @@
     */
     .digit .seg {
       position: absolute;
-      background: rgba(90, 48, 0, 0.22);
+      background: rgba(90, 48, 0, 0.24);
       border-radius: 999px;
-      box-shadow: none;
+      box-shadow:
+        inset 0 1px 0 rgba(255, 198, 77, 0.08),
+        0 0 10px rgba(255, 148, 0, 0.05);
     }
 
     /* Lit segment glow for retro mode. currentColor comes from the selected theme. */
     .digit .seg.on {
       background: currentColor;
       box-shadow:
-        0 0 10px rgba(255, 196, 77, 0.55),
-        0 0 24px rgba(255, 140, 0, 0.32);
+        inset 0 1px 0 rgba(255, 255, 255, 0.28),
+        0 0 10px rgba(255, 218, 128, 0.75),
+        0 0 24px rgba(255, 166, 0, 0.48),
+        0 0 42px rgba(255, 120, 0, 0.22);
     }
 
     /* Flat mode uses the same brightness, but square ends and no device panel. */
@@ -131,6 +135,7 @@
 
     body.style-flat .digit .seg {
       background: rgba(255, 255, 255, 0.08);
+      box-shadow: none;
       border-radius: 2px;
     }
 
@@ -238,8 +243,10 @@
       border-radius: 50%;
       background: currentColor;
       box-shadow:
-        0 0 8px rgba(255, 196, 77, 0.45),
-        0 0 18px rgba(255, 140, 0, 0.28);
+        inset 0 1px 0 rgba(255, 255, 255, 0.28),
+        0 0 9px rgba(255, 218, 128, 0.7),
+        0 0 22px rgba(255, 166, 0, 0.42),
+        0 0 34px rgba(255, 120, 0, 0.2);
     }
 
     #colon:before {
