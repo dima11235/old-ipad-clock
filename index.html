@@ -17,6 +17,8 @@
       background: #050505;
       color: #f4f1e8;
       font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      -webkit-user-select: none;
+      user-select: none;
     }
 
     body {
@@ -37,36 +39,256 @@
       font-weight: 100;
       letter-spacing: -0.08em;
       white-space: nowrap;
+      -webkit-transform: translate(0, 0);
+      transform: translate(0, 0);
+    }
+
+    #seconds {
+      display: inline-block;
+      width: 0;
+      overflow: hidden;
+      font-size: 0;
+      opacity: 0;
+      vertical-align: top;
+      -webkit-transition: opacity 0.2s ease;
+      transition: opacity 0.2s ease;
+    }
+
+    body.show-seconds #time {
+      font-size: 30vw;
+    }
+
+    body.show-seconds #seconds {
+      width: 0.9em;
+      font-size: 0.34em;
+      padding-top: 0.18em;
+      opacity: 0.75;
+    }
+
+    #status {
+      position: fixed;
+      left: 50%;
+      bottom: 5vh;
+      max-width: 84vw;
+      padding: 0.7em 1em;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 999px;
+      font-size: 3.6vw;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      opacity: 0;
+      background: rgba(0, 0, 0, 0.28);
+      -webkit-transform: translate(-50%, 10px);
+      transform: translate(-50%, 10px);
+      -webkit-transition: opacity 0.25s ease, -webkit-transform 0.25s ease;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      pointer-events: none;
+    }
+
+    #status.visible {
+      opacity: 0.9;
+      -webkit-transform: translate(-50%, 0);
+      transform: translate(-50%, 0);
     }
 
     .blink {
       opacity: 0.4;
     }
 
+    body.theme-warm {
+      background: #050505;
+      color: #f4f1e8;
+    }
+
+    body.theme-red {
+      background: #050505;
+      color: #ff5a4f;
+    }
+
+    body.theme-amber {
+      background: #050505;
+      color: #ffbf47;
+    }
+
+    body.theme-green {
+      background: #050505;
+      color: #7dff93;
+    }
+
+    body.dim {
+      opacity: 0.5;
+    }
+
     @media (orientation: portrait) {
       #time {
         font-size: 40vw;
+      }
+
+      body.show-seconds #time {
+        font-size: 34vw;
+      }
+
+      #status {
+        font-size: 4.4vw;
       }
     }
   </style>
 </head>
 <body>
-    <div class="wrap">
-      <div id="time">
-        <span id="hours">00</span>
-        <span id="colon">:</span>
-        <span id="minutes">00</span>
-      </div>
+  <div class="wrap">
+    <div id="time">
+      <span id="hours">00</span>
+      <span id="colon">:</span>
+      <span id="minutes">00</span>
+      <span id="seconds">00</span>
     </div>
+  </div>
+  <div id="status"></div>
 
   <script>
     (function () {
       var hoursNode = document.getElementById("hours");
       var minutesNode = document.getElementById("minutes");
+      var secondsNode = document.getElementById("seconds");
       var colonNode = document.getElementById("colon");
+      var timeNode = document.getElementById("time");
+      var statusNode = document.getElementById("status");
+      var body = document.body;
+
+      var themes = ["warm", "red", "amber", "green"];
+      var settings = loadSettings();
+      var holdTimer = null;
+      var holdTriggered = false;
+      var statusTimer = null;
+      var shiftIndex = 0;
+      var shiftPositions = [
+        { x: 0, y: 0 },
+        { x: 1, y: 0 },
+        { x: 1, y: 1 },
+        { x: 0, y: 1 },
+        { x: -1, y: 1 },
+        { x: -1, y: 0 },
+        { x: -1, y: -1 },
+        { x: 0, y: -1 },
+        { x: 1, y: -1 }
+      ];
 
       function pad(value) {
         return value < 10 ? "0" + value : String(value);
+      }
+
+      function loadSettings() {
+        var raw;
+
+        try {
+          raw = window.localStorage ? window.localStorage.getItem("clockSettings") : null;
+        } catch (error) {
+          raw = null;
+        }
+
+        if (!raw) {
+          return {
+            theme: "warm",
+            showSeconds: false
+          };
+        }
+
+        try {
+          return JSON.parse(raw);
+        } catch (error) {
+          return {
+            theme: "warm",
+            showSeconds: false
+          };
+        }
+      }
+
+      function saveSettings() {
+        try {
+          if (window.localStorage) {
+            window.localStorage.setItem("clockSettings", JSON.stringify(settings));
+          }
+        } catch (error) {}
+      }
+
+      function applyTheme() {
+        var i;
+
+        for (i = 0; i < themes.length; i++) {
+          body.className = body.className.replace(new RegExp("(^|\\s)theme-" + themes[i] + "(\\s|$)", "g"), " ");
+        }
+
+        body.className = body.className.replace(/\s+/g, " ").replace(/^\s+|\s+$/g, "");
+        body.className += (body.className ? " " : "") + "theme-" + settings.theme;
+      }
+
+      function applySeconds() {
+        if (settings.showSeconds) {
+          if (body.className.indexOf("show-seconds") === -1) {
+            body.className += (body.className ? " " : "") + "show-seconds";
+          }
+        } else {
+          body.className = body.className.replace(/(^|\s)show-seconds(\s|$)/g, " ").replace(/\s+/g, " ").replace(/^\s+|\s+$/g, "");
+        }
+      }
+
+      function applyDim(now) {
+        var hour = now.getHours();
+        var dim = hour >= 22 || hour < 7;
+
+        if (dim) {
+          if (body.className.indexOf("dim") === -1) {
+            body.className += (body.className ? " " : "") + " dim";
+          }
+        } else {
+          body.className = body.className.replace(/(^|\s)dim(\s|$)/g, " ").replace(/\s+/g, " ").replace(/^\s+|\s+$/g, "");
+        }
+      }
+
+      function showStatus(text) {
+        statusNode.innerHTML = text;
+        statusNode.className = "visible";
+
+        if (statusTimer) {
+          clearTimeout(statusTimer);
+        }
+
+        statusTimer = setTimeout(function () {
+          statusNode.className = "";
+        }, 1400);
+      }
+
+      function cycleTheme() {
+        var index = 0;
+        var i;
+
+        for (i = 0; i < themes.length; i++) {
+          if (themes[i] === settings.theme) {
+            index = i;
+            break;
+          }
+        }
+
+        settings.theme = themes[(index + 1) % themes.length];
+        applyTheme();
+        saveSettings();
+        showStatus(settings.theme + " theme");
+      }
+
+      function toggleSeconds() {
+        settings.showSeconds = !settings.showSeconds;
+        applySeconds();
+        saveSettings();
+        showStatus(settings.showSeconds ? "seconds on" : "seconds off");
+      }
+
+      function updateShift() {
+        var position = shiftPositions[shiftIndex];
+
+        timeNode.style.webkitTransform = "translate(" + position.x + "px," + position.y + "px)";
+        timeNode.style.transform = "translate(" + position.x + "px," + position.y + "px)";
+        shiftIndex = (shiftIndex + 1) % shiftPositions.length;
       }
 
       function updateClock() {
@@ -74,6 +296,8 @@
 
         hoursNode.innerHTML = pad(now.getHours());
         minutesNode.innerHTML = pad(now.getMinutes());
+        secondsNode.innerHTML = pad(now.getSeconds());
+        applyDim(now);
 
         if (now.getSeconds() % 2 === 0) {
           colonNode.className = "";
@@ -82,8 +306,49 @@
         }
       }
 
+      function startHold(event) {
+        if (event && event.touches && event.touches.length > 1) {
+          return;
+        }
+
+        holdTriggered = false;
+        holdTimer = setTimeout(function () {
+          holdTriggered = true;
+          toggleSeconds();
+        }, 700);
+      }
+
+      function endHold() {
+        if (holdTimer) {
+          clearTimeout(holdTimer);
+          holdTimer = null;
+        }
+      }
+
+      function handleTap(event) {
+        if (event) {
+          event.preventDefault();
+        }
+
+        if (holdTriggered) {
+          holdTriggered = false;
+          return;
+        }
+
+        cycleTheme();
+      }
+
+      applyTheme();
+      applySeconds();
+      updateShift();
       updateClock();
       setInterval(updateClock, 250);
+      setInterval(updateShift, 180000);
+
+      document.addEventListener("touchstart", startHold, false);
+      document.addEventListener("touchend", endHold, false);
+      document.addEventListener("touchcancel", endHold, false);
+      document.addEventListener("click", handleTap, false);
 
       if (window.applicationCache) {
         window.applicationCache.addEventListener("updateready", function () {
