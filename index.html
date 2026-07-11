@@ -726,10 +726,15 @@
         var active = digitMap[value];
         var i;
         var segmentName;
+        var match;
+        var isOn;
 
         for (i = 0; i < segments.length; i++) {
-          segmentName = segments[i].className.replace("seg seg-", "");
-          if (active.join("|").indexOf(segmentName) !== -1) {
+          match = segments[i].className.match(/seg-([a-g])/);
+          segmentName = match ? match[1] : "";
+          isOn = hasValue(active, segmentName);
+
+          if (isOn) {
             segments[i].className = "seg seg-" + segmentName + " on";
           } else {
             segments[i].className = "seg seg-" + segmentName;
