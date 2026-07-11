@@ -44,7 +44,6 @@
         inset 0 2px 0 rgba(255, 255, 255, 0.04),
         inset 0 -2px 18px rgba(0, 0, 0, 0.65),
         0 18px 60px rgba(0, 0, 0, 0.45);
-      margin-left: -2.6vw;
       -webkit-transform: translate(0, 0);
       transform: translate(0, 0);
     }
@@ -64,9 +63,9 @@
     .digit {
       position: relative;
       display: inline-block;
-      width: 19.2vw;
-      height: 32.4vw;
-      margin: 0 0.96vw;
+      width: 18vw;
+      height: 30.4vw;
+      margin: 0 0.75vw;
       vertical-align: middle;
     }
 
@@ -183,9 +182,9 @@
     #colon {
       position: relative;
       display: inline-block;
-      width: 6vw;
-      height: 32.4vw;
-      margin: 0 1.2vw;
+      width: 5.2vw;
+      height: 30.4vw;
+      margin: 0 0.9vw;
       vertical-align: middle;
     }
 
@@ -194,9 +193,9 @@
       content: "";
       position: absolute;
       left: 50%;
-      width: 1.92vw;
-      height: 1.92vw;
-      margin-left: -0.96vw;
+      width: 1.7vw;
+      height: 1.7vw;
+      margin-left: -0.85vw;
       border-radius: 50%;
       background: currentColor;
       box-shadow:
@@ -442,25 +441,21 @@
 
     @media (orientation: portrait) {
       .digit {
-        width: 20.4vw;
-        height: 36vw;
-        margin: 0 0.84vw;
-      }
-
-      #clock {
-        margin-left: -2.1vw;
+        width: 19.2vw;
+        height: 34vw;
+        margin: 0 0.7vw;
       }
 
       #colon {
-        width: 6.48vw;
-        height: 36vw;
+        width: 5.8vw;
+        height: 34vw;
       }
 
       #colon:before,
       #colon:after {
-        width: 2.16vw;
-        height: 2.16vw;
-        margin-left: -1.08vw;
+        width: 2vw;
+        height: 2vw;
+        margin-left: -1vw;
       }
 
       body.show-seconds .seconds .digit {
