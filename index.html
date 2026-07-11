@@ -480,9 +480,45 @@
       color: #ffc44d;
     }
 
+    body.theme-amber .digit .seg.on {
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.36),
+        0 0 12px rgba(255, 226, 142, 0.9),
+        0 0 28px rgba(255, 174, 0, 0.62),
+        0 0 54px rgba(255, 128, 0, 0.34),
+        0 0 78px rgba(255, 90, 0, 0.16);
+    }
+
+    body.theme-amber #colon:before,
+    body.theme-amber #colon:after {
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.36),
+        0 0 11px rgba(255, 226, 142, 0.84),
+        0 0 26px rgba(255, 174, 0, 0.54),
+        0 0 46px rgba(255, 128, 0, 0.28);
+    }
+
     body.theme-red {
       background: #060606;
       color: #ff695d;
+    }
+
+    body.theme-red .digit .seg.on {
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.32),
+        0 0 12px rgba(255, 150, 142, 0.9),
+        0 0 28px rgba(255, 84, 72, 0.62),
+        0 0 54px rgba(255, 40, 24, 0.34),
+        0 0 78px rgba(255, 0, 0, 0.16);
+    }
+
+    body.theme-red #colon:before,
+    body.theme-red #colon:after {
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.32),
+        0 0 11px rgba(255, 150, 142, 0.84),
+        0 0 26px rgba(255, 84, 72, 0.54),
+        0 0 46px rgba(255, 40, 24, 0.28);
     }
 
     body.theme-green {
@@ -490,9 +526,51 @@
       color: #83ff9a;
     }
 
+    body.theme-green .digit .seg.on {
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.32),
+        0 0 12px rgba(180, 255, 190, 0.9),
+        0 0 28px rgba(94, 255, 116, 0.62),
+        0 0 54px rgba(28, 230, 68, 0.34),
+        0 0 78px rgba(0, 180, 55, 0.16);
+    }
+
+    body.theme-green #colon:before,
+    body.theme-green #colon:after {
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.32),
+        0 0 11px rgba(180, 255, 190, 0.84),
+        0 0 26px rgba(94, 255, 116, 0.54),
+        0 0 46px rgba(28, 230, 68, 0.28);
+    }
+
     body.theme-ice {
       background: #050709;
       color: #98efff;
+    }
+
+    body.theme-ice .digit .seg.on {
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.34),
+        0 0 12px rgba(200, 250, 255, 0.9),
+        0 0 28px rgba(105, 224, 255, 0.62),
+        0 0 54px rgba(32, 170, 255, 0.34),
+        0 0 78px rgba(0, 100, 255, 0.16);
+    }
+
+    body.theme-ice #colon:before,
+    body.theme-ice #colon:after {
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.34),
+        0 0 11px rgba(200, 250, 255, 0.84),
+        0 0 26px rgba(105, 224, 255, 0.54),
+        0 0 46px rgba(32, 170, 255, 0.28);
+    }
+
+    body.style-flat .digit .seg.on,
+    body.style-flat #colon:before,
+    body.style-flat #colon:after {
+      box-shadow: none;
     }
 
     body.style-flat.theme-amber {
