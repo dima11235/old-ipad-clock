@@ -160,6 +160,14 @@
       height: 7%;
     }
 
+    body.weight-bold .seg-a,
+    body.weight-bold .seg-d,
+    body.weight-bold .seg-g {
+      left: 16%;
+      width: 68%;
+      height: 10%;
+    }
+
     .seg-a {
       top: 4%;
     }
@@ -179,6 +187,14 @@
     .seg-f {
       width: 7%;
       height: 34%;
+    }
+
+    body.weight-bold .seg-b,
+    body.weight-bold .seg-c,
+    body.weight-bold .seg-e,
+    body.weight-bold .seg-f {
+      width: 10%;
+      height: 35%;
     }
 
     .seg-b,
@@ -293,12 +309,26 @@
       height: 9%;
     }
 
+    body.show-seconds.weight-bold .seconds .seg-a,
+    body.show-seconds.weight-bold .seconds .seg-d,
+    body.show-seconds.weight-bold .seconds .seg-g {
+      height: 12%;
+    }
+
     body.show-seconds .seconds .seg-b,
     body.show-seconds .seconds .seg-c,
     body.show-seconds .seconds .seg-e,
     body.show-seconds .seconds .seg-f {
       width: 9%;
       height: 31%;
+    }
+
+    body.show-seconds.weight-bold .seconds .seg-b,
+    body.show-seconds.weight-bold .seconds .seg-c,
+    body.show-seconds.weight-bold .seconds .seg-e,
+    body.show-seconds.weight-bold .seconds .seg-f {
+      width: 12%;
+      height: 33%;
     }
 
     /* Small temporary message after changing a setting. */
@@ -597,6 +627,13 @@
       </div>
     </div>
     <div class="settings-row">
+      <div class="settings-label">Weight</div>
+      <div class="settings-options" id="weight-options">
+        <span class="option-button" data-weight="thin">Thin</span>
+        <span class="option-button" data-weight="bold">Bold</span>
+      </div>
+    </div>
+    <div class="settings-row">
       <div class="settings-label">Seconds</div>
       <div class="settings-options" id="seconds-options">
         <span class="option-button" data-seconds="off">Off</span>
@@ -657,6 +694,7 @@
 
       var themes = ["amber", "red", "green", "ice"];
       var styles = ["retro", "flat"];
+      var weights = ["thin", "bold"];
       var settings = loadSettings();
       var holdTimer = null;
       var holdTriggered = false;
@@ -702,6 +740,7 @@
             theme: "amber",
             showSeconds: false,
             style: "retro",
+            weight: "thin",
             blink: true,
             autoDim: true
           };
@@ -714,6 +753,7 @@
             theme: "amber",
             showSeconds: false,
             style: "retro",
+            weight: "thin",
             blink: true,
             autoDim: true
           };
@@ -728,6 +768,10 @@
 
         if (!hasValue(styles, settings.style)) {
           settings.style = "retro";
+        }
+
+        if (!hasValue(weights, settings.weight)) {
+          settings.weight = "thin";
         }
 
         settings.showSeconds = !!settings.showSeconds;
@@ -757,8 +801,8 @@
 
       /*
         Helper for body-level feature flags such as show-seconds, style-flat,
-        dim and settings-open. classList would be nicer, but manual className
-        editing is safer on old iOS Safari.
+        weight-bold, dim and settings-open. classList would be nicer, but manual
+        className editing is safer on old iOS Safari.
       */
       function setClassFlag(className, enabled) {
         if (enabled) {
@@ -788,6 +832,10 @@
 
       function applyStyle() {
         setClassFlag("style-flat", settings.style === "flat");
+      }
+
+      function applyWeight() {
+        setClassFlag("weight-bold", settings.weight === "bold");
       }
 
       function applyDim(now) {
@@ -843,6 +891,7 @@
         applyTheme();
         applySeconds();
         applyStyle();
+        applyWeight();
         saveSettings();
         refreshSettingsUI();
       }
@@ -865,6 +914,7 @@
       function refreshSettingsUI() {
         setOptionActive("style-options", "data-style", settings.style);
         setOptionActive("theme-options", "data-theme", settings.theme);
+        setOptionActive("weight-options", "data-weight", settings.weight);
         setOptionActive("seconds-options", "data-seconds", settings.showSeconds ? "on" : "off");
         setOptionActive("blink-options", "data-blink", settings.blink ? "on" : "off");
         setOptionActive("dim-options", "data-dim", settings.autoDim ? "auto" : "off");
@@ -880,11 +930,12 @@
         var target = event.target || event.srcElement;
         var style = target.getAttribute("data-style");
         var theme = target.getAttribute("data-theme");
+        var weight = target.getAttribute("data-weight");
         var seconds = target.getAttribute("data-seconds");
         var blink = target.getAttribute("data-blink");
         var dim = target.getAttribute("data-dim");
 
-        if (!style && !theme && !seconds && !blink && !dim) {
+        if (!style && !theme && !weight && !seconds && !blink && !dim) {
           return;
         }
 
@@ -900,6 +951,9 @@
         } else if (theme) {
           setSetting("theme", theme);
           showStatus(theme + " theme");
+        } else if (weight) {
+          setSetting("weight", weight);
+          showStatus(weight + " weight");
         } else if (seconds) {
           setSetting("showSeconds", seconds === "on");
           showStatus(seconds === "on" ? "seconds on" : "seconds off");
@@ -1046,6 +1100,7 @@
       applyTheme();
       applySeconds();
       applyStyle();
+      applyWeight();
       refreshSettingsUI();
       updateShift();
       updateClock();
