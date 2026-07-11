@@ -76,6 +76,7 @@ https://USERNAME.github.io/old-ipad-clock/
 - горизонтальная композиция: `.wrap` и `#clock`;
 - портретная композиция: `@media (orientation: portrait)`;
 - темы цветов: `body.theme-*` и `body.style-flat.theme-*`.
+- различие стилей: `Retro` рисует темную панель, `Flat` оставляет только цифры на черном фоне.
 
 После изменения `index.html` обязательно увеличьте версию в `clock.appcache`, например с `# v19` на `# v20`. Иначе Safari на iPad может продолжить показывать старую офлайн-версию.
 
