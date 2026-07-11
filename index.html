@@ -14,9 +14,9 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background: #050505;
-      color: #f4f1e8;
-      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      background: #070707;
+      color: #ffc44d;
+      font-family: Arial, sans-serif;
       -webkit-user-select: none;
       user-select: none;
     }
@@ -33,52 +33,167 @@
       padding: 4vh 4vw;
     }
 
-    #time {
-      font-size: 36vw;
-      line-height: 0.82;
-      font-weight: 300;
-      letter-spacing: -0.03em;
-      white-space: nowrap;
+    #clock {
+      display: inline-block;
+      padding: 4vh 3vw;
+      border-radius: 28px;
+      background:
+        radial-gradient(circle at top, rgba(255, 255, 255, 0.06), transparent 38%),
+        linear-gradient(180deg, #151515, #080808 55%, #040404);
+      box-shadow:
+        inset 0 2px 0 rgba(255, 255, 255, 0.04),
+        inset 0 -2px 18px rgba(0, 0, 0, 0.65),
+        0 18px 60px rgba(0, 0, 0, 0.45);
       -webkit-transform: translate(0, 0);
       transform: translate(0, 0);
     }
 
-    #hours,
-    #minutes,
-    #colon {
+    #time {
+      white-space: nowrap;
+    }
+
+    .digit {
+      position: relative;
       display: inline-block;
+      width: 16vw;
+      height: 27vw;
+      margin: 0 0.8vw;
+      vertical-align: middle;
     }
 
-    #hours,
-    #minutes {
-      min-width: 1.8em;
+    .digit .seg {
+      position: absolute;
+      background: rgba(90, 48, 0, 0.22);
+      border-radius: 999px;
+      box-shadow: none;
+    }
+
+    .digit .seg.on {
+      background: currentColor;
+      box-shadow:
+        0 0 10px rgba(255, 196, 77, 0.55),
+        0 0 24px rgba(255, 140, 0, 0.32);
+    }
+
+    .seg-a,
+    .seg-d,
+    .seg-g {
+      left: 18%;
+      width: 64%;
+      height: 7%;
+    }
+
+    .seg-a {
+      top: 4%;
+    }
+
+    .seg-g {
+      top: 46.5%;
+    }
+
+    .seg-d {
+      bottom: 4%;
+    }
+
+    .seg-b,
+    .seg-c,
+    .seg-e,
+    .seg-f {
+      width: 7%;
+      height: 34%;
+    }
+
+    .seg-b,
+    .seg-c {
+      right: 9%;
+    }
+
+    .seg-e,
+    .seg-f {
+      left: 9%;
+    }
+
+    .seg-f,
+    .seg-b {
+      top: 8%;
+    }
+
+    .seg-e,
+    .seg-c {
+      bottom: 8%;
     }
 
     #colon {
-      width: 0.42em;
-      text-align: center;
+      position: relative;
+      display: inline-block;
+      width: 5vw;
+      height: 27vw;
+      margin: 0 1vw;
+      vertical-align: middle;
     }
 
-    #seconds {
+    #colon:before,
+    #colon:after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      width: 1.6vw;
+      height: 1.6vw;
+      margin-left: -0.8vw;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow:
+        0 0 8px rgba(255, 196, 77, 0.45),
+        0 0 18px rgba(255, 140, 0, 0.28);
+    }
+
+    #colon:before {
+      top: 32%;
+    }
+
+    #colon:after {
+      bottom: 32%;
+    }
+
+    #colon.blink:before,
+    #colon.blink:after {
+      opacity: 0.28;
+      box-shadow: none;
+    }
+
+    .seconds {
       display: inline-block;
       width: 0;
       overflow: hidden;
-      font-size: 0;
       opacity: 0;
-      vertical-align: top;
+      vertical-align: middle;
       -webkit-transition: opacity 0.2s ease;
       transition: opacity 0.2s ease;
     }
 
-    body.show-seconds #time {
-      font-size: 29vw;
+    body.show-seconds .seconds {
+      width: auto;
+      opacity: 1;
     }
 
-    body.show-seconds #seconds {
-      width: 0.9em;
-      font-size: 0.34em;
-      padding-top: 0.18em;
-      opacity: 0.75;
+    body.show-seconds .seconds .digit {
+      width: 8vw;
+      height: 13.5vw;
+      margin: 0 0.3vw;
+    }
+
+    body.show-seconds .seconds .seg-a,
+    body.show-seconds .seconds .seg-d,
+    body.show-seconds .seconds .seg-g {
+      height: 9%;
+    }
+
+    body.show-seconds .seconds .seg-b,
+    body.show-seconds .seconds .seg-c,
+    body.show-seconds .seconds .seg-e,
+    body.show-seconds .seconds .seg-f {
+      width: 9%;
+      height: 31%;
     }
 
     #status {
@@ -87,14 +202,14 @@
       bottom: 5vh;
       max-width: 84vw;
       padding: 0.7em 1em;
-      border: 1px solid rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.12);
       border-radius: 999px;
       font-size: 3.6vw;
       letter-spacing: 0.08em;
       text-transform: uppercase;
       white-space: nowrap;
       opacity: 0;
-      background: rgba(0, 0, 0, 0.28);
+      background: rgba(0, 0, 0, 0.35);
       -webkit-transform: translate(-50%, 10px);
       transform: translate(-50%, 10px);
       -webkit-transition: opacity 0.25s ease, -webkit-transform 0.25s ease;
@@ -108,41 +223,52 @@
       transform: translate(-50%, 0);
     }
 
-    .blink {
-      opacity: 0.4;
-    }
-
-    body.theme-warm {
-      background: #050505;
-      color: #f4f1e8;
+    body.theme-amber {
+      background: #070707;
+      color: #ffc44d;
     }
 
     body.theme-red {
-      background: #050505;
-      color: #ff5a4f;
-    }
-
-    body.theme-amber {
-      background: #050505;
-      color: #ffbf47;
+      background: #060606;
+      color: #ff695d;
     }
 
     body.theme-green {
-      background: #050505;
-      color: #7dff93;
+      background: #060807;
+      color: #83ff9a;
     }
 
-    body.dim {
-      opacity: 0.5;
+    body.theme-ice {
+      background: #050709;
+      color: #98efff;
+    }
+
+    body.dim #clock {
+      opacity: 0.56;
     }
 
     @media (orientation: portrait) {
-      #time {
-        font-size: 40vw;
+      .digit {
+        width: 17vw;
+        height: 30vw;
+        margin: 0 0.7vw;
       }
 
-      body.show-seconds #time {
-        font-size: 34vw;
+      #colon {
+        width: 5.4vw;
+        height: 30vw;
+      }
+
+      #colon:before,
+      #colon:after {
+        width: 1.8vw;
+        height: 1.8vw;
+        margin-left: -0.9vw;
+      }
+
+      body.show-seconds .seconds .digit {
+        width: 8.6vw;
+        height: 15vw;
       }
 
       #status {
@@ -153,26 +279,63 @@
 </head>
 <body>
   <div class="wrap">
-    <div id="time">
-      <span id="hours">00</span>
-      <span id="colon">:</span>
-      <span id="minutes">00</span>
-      <span id="seconds">00</span>
+    <div id="clock">
+      <div id="time">
+        <div class="digit" id="hours-tens">
+          <span class="seg seg-a"></span><span class="seg seg-b"></span><span class="seg seg-c"></span><span class="seg seg-d"></span><span class="seg seg-e"></span><span class="seg seg-f"></span><span class="seg seg-g"></span>
+        </div>
+        <div class="digit" id="hours-ones">
+          <span class="seg seg-a"></span><span class="seg seg-b"></span><span class="seg seg-c"></span><span class="seg seg-d"></span><span class="seg seg-e"></span><span class="seg seg-f"></span><span class="seg seg-g"></span>
+        </div>
+        <div id="colon"></div>
+        <div class="digit" id="minutes-tens">
+          <span class="seg seg-a"></span><span class="seg seg-b"></span><span class="seg seg-c"></span><span class="seg seg-d"></span><span class="seg seg-e"></span><span class="seg seg-f"></span><span class="seg seg-g"></span>
+        </div>
+        <div class="digit" id="minutes-ones">
+          <span class="seg seg-a"></span><span class="seg seg-b"></span><span class="seg seg-c"></span><span class="seg seg-d"></span><span class="seg seg-e"></span><span class="seg seg-f"></span><span class="seg seg-g"></span>
+        </div>
+        <div class="seconds" id="seconds-wrap">
+          <div class="digit" id="seconds-tens">
+            <span class="seg seg-a"></span><span class="seg seg-b"></span><span class="seg seg-c"></span><span class="seg seg-d"></span><span class="seg seg-e"></span><span class="seg seg-f"></span><span class="seg seg-g"></span>
+          </div>
+          <div class="digit" id="seconds-ones">
+            <span class="seg seg-a"></span><span class="seg seg-b"></span><span class="seg seg-c"></span><span class="seg seg-d"></span><span class="seg seg-e"></span><span class="seg seg-f"></span><span class="seg seg-g"></span>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
   <div id="status"></div>
 
   <script>
     (function () {
-      var hoursNode = document.getElementById("hours");
-      var minutesNode = document.getElementById("minutes");
-      var secondsNode = document.getElementById("seconds");
-      var colonNode = document.getElementById("colon");
-      var timeNode = document.getElementById("time");
-      var statusNode = document.getElementById("status");
-      var body = document.body;
+      var digitMap = {
+        "0": ["a", "b", "c", "d", "e", "f"],
+        "1": ["b", "c"],
+        "2": ["a", "b", "d", "e", "g"],
+        "3": ["a", "b", "c", "d", "g"],
+        "4": ["b", "c", "f", "g"],
+        "5": ["a", "c", "d", "f", "g"],
+        "6": ["a", "c", "d", "e", "f", "g"],
+        "7": ["a", "b", "c"],
+        "8": ["a", "b", "c", "d", "e", "f", "g"],
+        "9": ["a", "b", "c", "d", "f", "g"]
+      };
 
-      var themes = ["warm", "red", "amber", "green"];
+      var body = document.body;
+      var clockNode = document.getElementById("clock");
+      var colonNode = document.getElementById("colon");
+      var statusNode = document.getElementById("status");
+      var digits = {
+        ht: document.getElementById("hours-tens"),
+        ho: document.getElementById("hours-ones"),
+        mt: document.getElementById("minutes-tens"),
+        mo: document.getElementById("minutes-ones"),
+        st: document.getElementById("seconds-tens"),
+        so: document.getElementById("seconds-ones")
+      };
+
+      var themes = ["amber", "red", "green", "ice"];
       var settings = loadSettings();
       var holdTimer = null;
       var holdTriggered = false;
@@ -205,7 +368,7 @@
 
         if (!raw) {
           return {
-            theme: "warm",
+            theme: "amber",
             showSeconds: false
           };
         }
@@ -214,7 +377,7 @@
           return JSON.parse(raw);
         } catch (error) {
           return {
-            theme: "warm",
+            theme: "amber",
             showSeconds: false
           };
         }
@@ -226,6 +389,16 @@
             window.localStorage.setItem("clockSettings", JSON.stringify(settings));
           }
         } catch (error) {}
+      }
+
+      function setClassFlag(className, enabled) {
+        if (enabled) {
+          if (body.className.indexOf(className) === -1) {
+            body.className += (body.className ? " " : "") + className;
+          }
+        } else {
+          body.className = body.className.replace(new RegExp("(^|\\s)" + className + "(\\s|$)", "g"), " ").replace(/\s+/g, " ").replace(/^\s+|\s+$/g, "");
+        }
       }
 
       function applyTheme() {
@@ -240,26 +413,12 @@
       }
 
       function applySeconds() {
-        if (settings.showSeconds) {
-          if (body.className.indexOf("show-seconds") === -1) {
-            body.className += (body.className ? " " : "") + "show-seconds";
-          }
-        } else {
-          body.className = body.className.replace(/(^|\s)show-seconds(\s|$)/g, " ").replace(/\s+/g, " ").replace(/^\s+|\s+$/g, "");
-        }
+        setClassFlag("show-seconds", settings.showSeconds);
       }
 
       function applyDim(now) {
         var hour = now.getHours();
-        var dim = hour >= 22 || hour < 7;
-
-        if (dim) {
-          if (body.className.indexOf("dim") === -1) {
-            body.className += (body.className ? " " : "") + " dim";
-          }
-        } else {
-          body.className = body.className.replace(/(^|\s)dim(\s|$)/g, " ").replace(/\s+/g, " ").replace(/^\s+|\s+$/g, "");
-        }
+        setClassFlag("dim", hour >= 22 || hour < 7);
       }
 
       function showStatus(text) {
@@ -299,27 +458,49 @@
         showStatus(settings.showSeconds ? "seconds on" : "seconds off");
       }
 
+      function paintDigit(node, value) {
+        var segments = node.getElementsByClassName("seg");
+        var active = digitMap[value];
+        var i;
+        var segmentName;
+
+        for (i = 0; i < segments.length; i++) {
+          segmentName = segments[i].className.replace("seg seg-", "");
+          if (active.join("|").indexOf(segmentName) !== -1) {
+            segments[i].className = "seg seg-" + segmentName + " on";
+          } else {
+            segments[i].className = "seg seg-" + segmentName;
+          }
+        }
+      }
+
+      function drawTime(now) {
+        var hours = pad(now.getHours());
+        var minutes = pad(now.getMinutes());
+        var seconds = pad(now.getSeconds());
+
+        paintDigit(digits.ht, hours.charAt(0));
+        paintDigit(digits.ho, hours.charAt(1));
+        paintDigit(digits.mt, minutes.charAt(0));
+        paintDigit(digits.mo, minutes.charAt(1));
+        paintDigit(digits.st, seconds.charAt(0));
+        paintDigit(digits.so, seconds.charAt(1));
+      }
+
       function updateShift() {
         var position = shiftPositions[shiftIndex];
 
-        timeNode.style.webkitTransform = "translate(" + position.x + "px," + position.y + "px)";
-        timeNode.style.transform = "translate(" + position.x + "px," + position.y + "px)";
+        clockNode.style.webkitTransform = "translate(" + position.x + "px," + position.y + "px)";
+        clockNode.style.transform = "translate(" + position.x + "px," + position.y + "px)";
         shiftIndex = (shiftIndex + 1) % shiftPositions.length;
       }
 
       function updateClock() {
         var now = new Date();
 
-        hoursNode.innerHTML = pad(now.getHours());
-        minutesNode.innerHTML = pad(now.getMinutes());
-        secondsNode.innerHTML = pad(now.getSeconds());
+        drawTime(now);
         applyDim(now);
-
-        if (now.getSeconds() % 2 === 0) {
-          colonNode.className = "";
-        } else {
-          colonNode.className = "blink";
-        }
+        colonNode.className = now.getSeconds() % 2 === 0 ? "" : "blink";
       }
 
       function startHold(event) {
