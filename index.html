@@ -711,10 +711,20 @@
     }
 
     body.mode-led #date-line,
-    body.mode-led #meridiem,
+    body.mode-led #meridiem {
+      text-shadow: 0 0 10px rgba(255, 255, 255, 0.28), 0 0 26px currentColor;
+    }
+
+    /*
+      On a VFD the phosphor burns almost white and only the halo carries the
+      colour, so the text has to be built the same way as a lit segment: a white
+      glyph with a coloured bloom. text-fill-color paints the glyph while color
+      stays the theme colour, which is what currentColor in the shadow picks up.
+    */
     body.mode-vfd #date-line,
     body.mode-vfd #meridiem {
-      text-shadow: 0 0 10px rgba(255, 255, 255, 0.28), 0 0 26px currentColor;
+      -webkit-text-fill-color: rgba(255, 255, 255, 0.92);
+      text-shadow: 0 0 8px currentColor, 0 0 22px currentColor, 0 0 44px currentColor;
     }
 
     /* LCD backlights. The digits stay dark, so only the panel colour changes. */
