@@ -1276,20 +1276,41 @@
       var holdTimer = null;
       var holdTriggered = false;
       var resizeTimer = null;
-      var shiftIndex = 0;
       var lastDateKey = "";
       var lastDimState = null;
       var lastViewport = "";
       var wakeLock = null;
 
       /*
-        Burn in protection. A clock that shows the same pixels for days can mark
-        an old LCD, so the whole panel creeps around a small square.
+        Burn in protection. An LCD that holds the same picture for weeks keeps a
+        ghost of it, and a wall clock is the worst case: the same digits, in the
+        same place, lit for months. The whole panel therefore drifts across the
+        screen. Two things decide whether that actually helps.
+
+        How far it moves. A shift smaller than the thickness of a segment only
+        lands a lit pixel on top of another lit pixel and protects nothing, and a
+        segment is tens of pixels thick at these digit sizes. The clock needs room
+        to travel that far, so applyMetrics() keeps DRIFT_ROOM of the viewport
+        free on every side - it costs a few per cent of digit height - and the
+        drift then uses all the space the layout left over, which in portrait,
+        where the digits are width bound, is a lot more than the reserve.
+
+        Where it goes. A short cycle of fixed spots lights the same pixels again
+        and again, and the pixels between the spots stay dark, so the ghost simply
+        gains hard edges. Instead the clock rides a Lissajous figure: two sine
+        waves whose periods have no common divisor, which never repeats a position
+        for days on end, never rests anywhere, and sweeps the whole box evenly.
+        The periods are long enough that the clock creeps by a pixel or two per
+        step and the eye cannot catch it moving.
       */
-      var SHIFTS = [
-        { x: 0, y: 0 }, { x: 2, y: 0 }, { x: 2, y: 2 }, { x: 0, y: 2 },
-        { x: -2, y: 2 }, { x: -2, y: 0 }, { x: -2, y: -2 }, { x: 0, y: -2 }, { x: 2, y: -2 }
-      ];
+      var DRIFT_ROOM = 0.02;             /* share of the viewport reserved on each side */
+      var DRIFT_CAP = 0.06;              /* the drift never grows past this share of the viewport */
+      var DRIFT_TICK = 20000;            /* how often the position is recomputed */
+      var DRIFT_X_PERIOD = 43 * 60000;   /* 43 and 71 minutes: coprime, so the figure */
+      var DRIFT_Y_PERIOD = 71 * 60000;   /* only closes after two days */
+
+      var driftX = 0;                    /* px, how far the clock may travel; set by measureDrift */
+      var driftY = 0;
 
       /* ---------------------------------------------------------------
          Settings
@@ -1494,8 +1515,11 @@
         var box = LAYOUT[settings.mode] || LAYOUT.led;
         var viewportW = window.innerWidth || document.documentElement.clientWidth;
         var viewportH = window.innerHeight || document.documentElement.clientHeight;
-        var availableW = viewportW * 0.99;
-        var availableH = viewportH * 0.97;
+        /* The clock is fitted into the screen minus the room the drift needs to move in. */
+        var roomX = Math.round(viewportW * DRIFT_ROOM);
+        var roomY = Math.round(viewportH * DRIFT_ROOM);
+        var availableW = viewportW * 0.99 - 2 * roomX;
+        var availableH = viewportH * 0.97 - 2 * roomY;
         var secondsCellW = box.cellW * SECONDS_SCALE;
         var secondsGap = box.gap * SECONDS_SCALE;
         var unitsW = 4 * (box.cellW + 2 * box.gap) + (box.colonW + 2 * box.gap) + 2 * box.padX;
@@ -1548,6 +1572,7 @@
         ].join("\n");
 
         setStyleText(metricsNode, css);
+        measureDrift(viewportW, viewportH);
       }
 
       /* Horizontal filament wires of a VFD tube, spaced with the digit height. */
@@ -1774,13 +1799,30 @@
         }
       }
 
-      function shiftClock() {
-        var position = SHIFTS[shiftIndex];
-        var value = "translate(" + position.x + "px," + position.y + "px)";
+      /*
+        How far the clock is allowed to travel: whatever the layout left unused,
+        minus a pixel so that a glow never touches the edge of the screen. The
+        room reserved in applyMetrics() is the floor; the slack of whichever axis
+        is not the binding one comes on top of it for free, and DRIFT_CAP stops
+        the clock from wandering half a screen when that slack is large.
+      */
+      function measureDrift(viewportW, viewportH) {
+        var freeX = Math.floor((viewportW - clockNode.offsetWidth) / 2) - 1;
+        var freeY = Math.floor((viewportH - clockNode.offsetHeight) / 2) - 1;
+
+        driftX = Math.max(0, Math.min(Math.round(viewportW * DRIFT_CAP), freeX));
+        driftY = Math.max(0, Math.min(Math.round(viewportH * DRIFT_CAP), freeY));
+        driftClock();
+      }
+
+      function driftClock() {
+        var now = new Date().getTime();
+        var x = Math.round(driftX * Math.sin(2 * Math.PI * now / DRIFT_X_PERIOD));
+        var y = Math.round(driftY * Math.sin(2 * Math.PI * now / DRIFT_Y_PERIOD));
+        var value = "translate(" + x + "px," + y + "px)";
 
         clockNode.style.webkitTransform = value;
         clockNode.style.transform = value;
-        shiftIndex = (shiftIndex + 1) % SHIFTS.length;
       }
 
       /* ---------------------------------------------------------------
@@ -2012,13 +2054,12 @@
 
       buildDisplay();
       collectI18nNodes();
-      applyAll();
-      shiftClock();
+      applyAll();          /* applyMetrics() inside it also places the clock on its drift path */
       setupOffline();
       requestWakeLock();
 
       setInterval(tick, 200);
-      setInterval(shiftClock, 180000);
+      setInterval(driftClock, DRIFT_TICK);
 
       settingsPanel.onclick = handleSettingsClick;
       settingsPanel.ontouchstart = function (event) {
