@@ -316,16 +316,35 @@
     /* ---------- seconds, date, meridiem ---------- */
 
     /*
-      Seconds live in the DOM at all times and are collapsed when switched off, so
-      the layout math never has to rebuild them.
+      The annunciator column to the right of the minutes: AM/PM at the top,
+      seconds at the bottom, the way a desk clock arranges them.
+
+      Both live in the DOM at all times and are hidden when switched off, so the
+      layout maths never has to rebuild them. The column is a real box in the
+      row, not an absolutely positioned overlay - an overlay takes up no space,
+      so it would collide with the digits again the moment they grow.
     */
+    .side {
+      display: none;
+      position: relative;
+      vertical-align: middle;
+    }
+
+    body.show-seconds .side,
+    body.hour12 .side {
+      display: inline-block;
+    }
+
     .seconds {
       display: none;
-      vertical-align: bottom;
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      white-space: nowrap;
     }
 
     body.show-seconds .seconds {
-      display: inline-block;
+      display: block;
     }
 
     #date-line {
@@ -343,12 +362,11 @@
     #meridiem {
       display: none;
       position: absolute;
-      right: 4%;
-      top: 6%;
+      left: 0;
+      top: 0;
       letter-spacing: 0.12em;
       font-weight: bold;
       color: currentColor;
-      opacity: 0.75;
     }
 
     body.hour12 #meridiem {
@@ -933,6 +951,7 @@
     <div id="clock">
       <div class="frame" id="frame">
         <div class="lcd-glass"></div>
+        <!-- #time is filled by buildDisplay(), which also moves #meridiem into it. -->
         <div id="time"></div>
         <div class="filaments"></div>
         <div id="date-line"></div>
@@ -1079,7 +1098,9 @@
       };
 
       var SECONDS_SCALE = 0.42;   /* seconds digit height relative to the main digits */
-      var SECONDS_LEAD = 0.10;    /* space between the minutes and the seconds group */
+      var SECONDS_LEAD = 0.10;    /* space between the minutes and the annunciator column */
+      var MERIDIEM_SIZE = 0.16;   /* AM/PM font size */
+      var MERIDIEM_WIDTH = 0.42;  /* column width AM/PM needs at that font size */
       var DATE_SIZE = 0.19;       /* date font size */
       var DATE_GAP = 0.12;        /* space between the digits and the date line */
       var MIN_DIGIT = 44;
@@ -1407,6 +1428,7 @@
 
       function buildDisplay() {
         var seconds = document.createElement("div");
+        var side = document.createElement("div");
 
         timeNode.appendChild(createDigitCell("ht"));
         timeNode.appendChild(createDigitCell("ho"));
@@ -1417,7 +1439,12 @@
         seconds.className = "seconds";
         seconds.appendChild(createDigitCell("st"));
         seconds.appendChild(createDigitCell("so"));
-        timeNode.appendChild(seconds);
+
+        /* AM/PM and the seconds share one column to the right of the minutes. */
+        side.className = "side";
+        side.appendChild(meridiemNode);
+        side.appendChild(seconds);
+        timeNode.appendChild(side);
       }
 
       /* ---------------------------------------------------------------
@@ -1440,13 +1467,27 @@
         var secondsGap = box.gap * SECONDS_SCALE;
         var unitsW = 4 * (box.cellW + 2 * box.gap) + (box.colonW + 2 * box.gap) + 2 * box.padX;
         var unitsH = 1 + 2 * box.padY;
+        var sideW = 0;
         var digitH;
         var css;
 
         lastViewport = viewportW + "x" + viewportH;
 
+        /*
+          The annunciator column is as wide as whatever it holds. AM/PM alone is
+          narrower than the seconds, and when both are on they stack in the same
+          column, so the width is the larger of the two rather than their sum.
+        */
         if (settings.showSeconds) {
-          unitsW += SECONDS_LEAD + 2 * (secondsCellW + 2 * secondsGap);
+          sideW = 2 * (secondsCellW + 2 * secondsGap);
+        }
+
+        if (settings.hour12) {
+          sideW = Math.max(sideW, MERIDIEM_WIDTH);
+        }
+
+        if (sideW > 0) {
+          unitsW += SECONDS_LEAD + sideW;
         }
 
         if (settings.showDate) {
@@ -1463,13 +1504,13 @@
           ".colon{width:" + px(digitH * box.colonW) + "}",
           ".colon .dot{width:" + px(digitH * box.dot) + ";height:" + px(digitH * box.dot) + ";margin-left:" + px(-digitH * box.dot / 2) + "}",
           ".num{font-size:" + px(digitH * 0.82) + ";line-height:" + px(digitH) + "}",
-          ".seconds{margin-left:" + px(digitH * SECONDS_LEAD) + "}",
+          ".side{width:" + px(digitH * sideW) + ";height:" + px(digitH) + ";margin-left:" + px(digitH * SECONDS_LEAD) + "}",
           ".seconds .cell{height:" + px(digitH * SECONDS_SCALE) + ";margin:0 " + px(digitH * secondsGap) + "}",
           ".seconds .digit{width:" + px(digitH * secondsCellW) + "}",
           ".seconds .num{font-size:" + px(digitH * SECONDS_SCALE * 0.82) + ";line-height:" + px(digitH * SECONDS_SCALE) + "}",
           ".frame{padding:" + px(digitH * box.padY) + " " + px(digitH * box.padX) + ";border-radius:" + px(digitH * box.radius) + "}",
           "#date-line{font-size:" + px(digitH * DATE_SIZE) + ";margin-top:" + px(digitH * DATE_GAP) + "}",
-          "#meridiem{font-size:" + px(digitH * 0.13) + "}",
+          "#meridiem{font-size:" + px(digitH * MERIDIEM_SIZE) + "}",
           filamentCss(digitH * 0.26)
         ].join("\n");
 
