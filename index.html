@@ -633,19 +633,22 @@
     /*
       The colon of a nixie clock is not an LED dot - it is a small neon lamp
       (an INS-1 and its kin), where the glow sits on the electrode ring and the
-      gas inside it is only a haze. So the dot is built like a cathode too: a
-      bright ring, a thin plasma fill and the same bloom and flicker as a lit
-      numeral. A solid filled disc reads as a light emitting diode and gives the
-      whole tube board away.
+      gas inside it is only a haze. A solid filled disc reads as a light
+      emitting diode and gives the whole tube board away.
 
-      The ring thickness comes from #metrics, because it has to scale with the
-      dot, and the dot size is a pixel value the layout decides.
+      The ring is a gradient, not a border. A border has a hard inner edge, and
+      against the dark panel the middle of the lamp then looks like a black hole
+      punched into it. Ionised gas has no edges: the glow has to fade out of the
+      ring in both directions, inwards into the haze and outwards into the bloom.
     */
     body.mode-nixie .colon .dot {
-      box-sizing: border-box;
-      border-style: solid;
-      border-color: #ffb267;
-      background: rgba(255, 128, 40, 0.42);
+      background:
+        radial-gradient(circle at 50% 50%,
+          rgba(255, 175, 95, 0.82) 0%,
+          rgba(255, 170, 90, 0.86) 38%,
+          rgba(255, 205, 150, 1) 66%,
+          rgba(255, 165, 80, 0.9) 84%,
+          rgba(255, 125, 35, 0.45) 100%);
       box-shadow:
         0 0 5px rgba(255, 200, 140, 0.85),
         0 0 14px rgba(255, 145, 55, 0.9),
@@ -1519,8 +1522,7 @@
           ".digit{width:" + px(digitH * box.cellW) + "}",
           ".cell{margin:0 " + px(digitH * box.gap) + "}",
           ".colon{width:" + px(digitH * box.colonW) + "}",
-          /* The border only shows in nixie mode, where the dot is a neon lamp with a lit electrode ring. */
-          ".colon .dot{width:" + px(digitH * box.dot) + ";height:" + px(digitH * box.dot) + ";margin-left:" + px(-digitH * box.dot / 2) + ";border-width:" + px(digitH * box.dot * 0.16) + "}",
+          ".colon .dot{width:" + px(digitH * box.dot) + ";height:" + px(digitH * box.dot) + ";margin-left:" + px(-digitH * box.dot / 2) + "}",
           ".num{font-size:" + px(digitH * 0.82) + ";line-height:" + px(digitH) + "}",
           ".side{width:" + px(digitH * sideW) + ";height:" + px(digitH) + ";margin-left:" + px(digitH * SECONDS_LEAD) + "}",
           ".seconds .cell{height:" + px(digitH * SECONDS_SCALE) + ";margin:0 " + px(digitH * secondsGap) + "}",
