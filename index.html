@@ -2,437 +2,779 @@
 <html manifest="clock.appcache">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Clock">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="format-detection" content="telephone=no">
-  <title>iPad Clock</title>
+  <meta name="theme-color" content="#050505">
+  <title>Retro Clock</title>
   <style>
     /*
-      Old iPad Clock
-      ----------------
-      This file intentionally avoids modern browser features. Safari on iOS 9.3.5
-      has no Service Worker support, so the project uses Application Cache and
-      plain ES5 JavaScript. Keep that in mind when editing: no modules, no let/const,
-      no arrow functions, no CSS custom properties.
+      Retro Clock
+      -----------
+      Targets every iPad from the original iPad mini (Safari on iOS 9.3.5) up to
+      current models, plus desktop browsers.
+
+      Constraints that follow from iOS 9 Safari:
+      - no Service Worker (Application Cache is used there; sw.js covers modern iOS),
+      - no CSS custom properties, no calc() tricks, no flexbox gap,
+      - ES5 only: no let/const, no arrow functions, no template strings.
+
+      Sizing rule: this stylesheet never hardcodes a device size. Everything that
+      depends on the screen is generated at runtime into #metrics by applyMetrics(),
+      which fits the clock into the current viewport. Inside one digit the geometry
+      is expressed in percentages, so a digit scales as a whole.
     */
 
-    /* Full-screen base: no scroll, no text selection, no external fonts. */
     html,
     body {
       margin: 0;
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background: #070707;
-      color: #ffc44d;
-      font-family: Arial, sans-serif;
+      background: #050505;
+      color: #ffb648;
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
       -webkit-user-select: none;
       user-select: none;
+      -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+      -webkit-text-size-adjust: none;
     }
 
+    /* display: table centering is the most reliable full-height centering on iOS 9. */
     body {
       display: table;
       text-align: center;
       -webkit-font-smoothing: antialiased;
     }
 
-    /*
-      The wrapper is vertically centered with display: table/table-cell because it
-      is reliable on old Safari. The translateY value is a visual composition tweak:
-      in landscape the clock looks better slightly above the mathematical center.
-    */
-    .wrap {
+    .stage {
       display: table-cell;
       vertical-align: middle;
-      padding: 4vh 4vw;
-      -webkit-transform: translateY(-6vh);
-      transform: translateY(-6vh);
     }
 
-    /*
-      Main clock panel.
-      Retro mode uses this dark rounded panel. Flat mode removes the panel later,
-      but reuses the same digit geometry.
-    */
     #clock {
       display: inline-block;
-      padding: 4vh 3vw;
-      border-radius: 28px;
-      background:
-        radial-gradient(circle at top, rgba(255, 255, 255, 0.06), transparent 38%),
-        linear-gradient(180deg, #151515, #080808 55%, #040404);
-      box-shadow:
-        inset 0 2px 0 rgba(255, 255, 255, 0.04),
-        inset 0 -2px 18px rgba(0, 0, 0, 0.65),
-        0 18px 60px rgba(0, 0, 0, 0.45);
-      margin-left: -1.2vw;
-      -webkit-transform: translate(0, 0);
-      transform: translate(0, 0);
-    }
-
-    /* Flat mode keeps bright digits but removes the retro device-like background. */
-    body.style-flat #clock {
-      padding: 1vh 0;
-      border-radius: 0;
-      background: none;
-      box-shadow: none;
-    }
-
-    /* font-size: 0 removes inline-block whitespace between digit elements. */
-    #time {
-      white-space: nowrap;
-      font-size: 0;
-    }
-
-    #date-line {
-      display: none;
-      margin-top: 2.2vh;
-      font-size: 3.4vw;
-      line-height: 1.1;
-      font-family: Arial, sans-serif;
-      font-weight: bold;
-      letter-spacing: 0.16em;
-      text-transform: uppercase;
-      color: currentColor;
-      text-shadow:
-        0 0 8px rgba(255, 226, 142, 0.62),
-        0 0 20px rgba(255, 174, 0, 0.34);
-    }
-
-    body.show-date #date-line {
-      display: block;
-    }
-
-    body.style-flat #date-line {
-      text-shadow: none;
     }
 
     /*
-      One seven-segment digit.
-      The width/height values are tuned for iPad mini landscape first. Portrait
-      values are overridden in the media query at the end of the stylesheet.
+      .frame is the physical device around the digits: the LED panel, the nixie
+      board, the VFD glass or the LCD module. Flat mode removes it.
     */
-    .digit {
+    .frame {
       position: relative;
       display: inline-block;
-      width: 18.8vw;
-      height: 31.8vw;
-      margin: 0 0.72vw;
+    }
+
+    /* font-size and line-height are zeroed so inline-block cells add no stray gaps. */
+    #time {
+      position: relative;
+      white-space: nowrap;
+      font-size: 0;
+      line-height: 0;
+    }
+
+    /* One digit or the colon. Height comes from #metrics, inner parts use %. */
+    .cell {
+      position: relative;
+      display: inline-block;
       vertical-align: middle;
     }
 
-    /*
-      A segment is dark by default. JavaScript adds the "on" class to light it.
-      The segment names are:
-      a = top, b = upper right, c = lower right, d = bottom,
-      e = lower left, f = upper left, g = middle.
-    */
-    .digit .seg {
+    .layer {
       position: absolute;
-      background: rgba(90, 48, 0, 0.24);
+      left: 0;
+      top: 0;
+      right: 0;
+      bottom: 0;
+    }
+
+    /* ---------- seven segment layer ---------- */
+
+    /*
+      Segment names: a top, b upper right, c lower right, d bottom,
+      e lower left, f upper left, g middle.
+
+      Each segment is three things:
+      - .seg    the box that defines where the segment sits,
+      - i       the visible body, clipped into a bevelled bar the way a real
+                LED/LCD/VFD segment is shaped,
+      - :before the glow source.
+
+      The glow cannot live on the body, because clip-path cuts a shadow away, and
+      it cannot live on .seg either, because an outer box-shadow is never painted
+      inside its own box, which would leave the bevelled corners dark. So it comes
+      from a pill shaped pseudo element sitting *inside* the body: the light then
+      spills out through the whole segment, corners included.
+    */
+    .seg {
+      position: absolute;
+    }
+
+    .seg i {
+      display: block;
+      position: absolute;
+      left: 0;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      border-radius: 2px;
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .seg:before {
+      content: "";
+      position: absolute;
       border-radius: 999px;
-      box-shadow:
-        inset 0 1px 0 rgba(255, 198, 77, 0.08),
-        0 0 10px rgba(255, 148, 0, 0.05);
     }
 
-    /* Lit segment glow for retro mode. currentColor comes from the selected theme. */
-    .digit .seg.on {
-      background: currentColor;
-      box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.36),
-        0 0 12px rgba(255, 226, 142, 0.9),
-        0 0 28px rgba(255, 174, 0, 0.62),
-        0 0 54px rgba(255, 128, 0, 0.34),
-        0 0 78px rgba(255, 90, 0, 0.16);
+    .seg-h:before {
+      left: 9%;
+      right: 9%;
+      top: 24%;
+      bottom: 24%;
     }
 
-    /* Flat mode uses the same brightness, but square ends and no device panel. */
-    body.style-flat .digit .seg.on {
-      background: currentColor;
-      box-shadow: none;
-      border-radius: 999px;
+    .seg-v:before {
+      left: 24%;
+      right: 24%;
+      top: 8%;
+      bottom: 8%;
     }
 
-    body.style-flat .digit .seg {
-      background: rgba(255, 255, 255, 0.08);
-      box-shadow: none;
-      border-radius: 999px;
+    .seg-h i {
+      -webkit-clip-path: polygon(7% 0, 93% 0, 100% 50%, 93% 100%, 7% 100%, 0 50%);
+      clip-path: polygon(7% 0, 93% 0, 100% 50%, 93% 100%, 7% 100%, 0 50%);
     }
 
-    body.style-flat #colon:before,
-    body.style-flat #colon:after {
-      background: currentColor;
-      box-shadow: none;
-      border-radius: 50%;
+    .seg-v i {
+      -webkit-clip-path: polygon(0 4%, 50% 0, 100% 4%, 100% 96%, 50% 100%, 0 96%);
+      clip-path: polygon(0 4%, 50% 0, 100% 4%, 100% 96%, 50% 100%, 0 96%);
     }
 
-    body.style-flat .digit {
-      margin: 0 0.45vw;
-    }
-
-    body.style-flat #colon {
-      margin: 0 0.45vw;
-    }
-
-    /* Horizontal segment placement. */
+    /* Thin geometry (default). */
     .seg-a,
     .seg-d,
     .seg-g {
-      left: 18%;
-      width: 64%;
-      height: 7%;
-    }
-
-    body.weight-bold .seg-a,
-    body.weight-bold .seg-d,
-    body.weight-bold .seg-g {
-      left: 18%;
-      width: 64%;
-      height: 8.5%;
+      left: 15%;
+      width: 70%;
+      height: 8%;
     }
 
     .seg-a {
-      top: 4%;
+      top: 3%;
     }
 
     .seg-g {
-      top: 46.5%;
+      top: 46%;
     }
 
     .seg-d {
-      bottom: 4%;
+      bottom: 3%;
     }
 
-    /* Vertical segment placement. */
     .seg-b,
     .seg-c,
     .seg-e,
     .seg-f {
-      width: 12%;
-      height: 32%;
+      width: 13%;
+      height: 33.5%;
+    }
+
+    .seg-b,
+    .seg-c {
+      right: 5.5%;
+    }
+
+    .seg-e,
+    .seg-f {
+      left: 5.5%;
+    }
+
+    .seg-f,
+    .seg-b {
+      top: 11.5%;
+    }
+
+    .seg-e,
+    .seg-c {
+      bottom: 11.5%;
+    }
+
+    /* Bold geometry. */
+    body.weight-bold .seg-a,
+    body.weight-bold .seg-d,
+    body.weight-bold .seg-g {
+      height: 10%;
+    }
+
+    body.weight-bold .seg-a {
+      top: 3.5%;
+    }
+
+    body.weight-bold .seg-g {
+      top: 45.5%;
+    }
+
+    body.weight-bold .seg-d {
+      bottom: 3.5%;
     }
 
     body.weight-bold .seg-b,
     body.weight-bold .seg-c,
     body.weight-bold .seg-e,
     body.weight-bold .seg-f {
-      width: 14%;
-      height: 31%;
-    }
-
-    .seg-b,
-    .seg-c {
-      right: 7%;
-    }
-
-    .seg-e,
-    .seg-f {
-      left: 7%;
-    }
-
-    .seg-f,
-    .seg-b {
-      top: 13%;
-    }
-
-    .seg-e,
-    .seg-c {
-      bottom: 13%;
+      width: 15.5%;
+      height: 32%;
     }
 
     body.weight-bold .seg-f,
     body.weight-bold .seg-b {
-      top: 14%;
+      top: 13%;
     }
 
     body.weight-bold .seg-e,
     body.weight-bold .seg-c {
-      bottom: 14%;
+      bottom: 13%;
     }
 
-    /* The colon is drawn with pseudo-elements so it can blink independently. */
-    #colon {
-      position: relative;
-      display: inline-block;
-      width: 5.5vw;
-      height: 31.8vw;
-      margin: 0 0.82vw;
-      vertical-align: middle;
-    }
+    /* ---------- numeral layer (nixie tubes) ---------- */
 
-    #colon:before,
-    #colon:after {
-      content: "";
-      position: absolute;
-      left: 50%;
-      width: 1.82vw;
-      height: 1.82vw;
-      margin-left: -0.91vw;
-      border-radius: 50%;
-      background: currentColor;
-      box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.36),
-        0 0 11px rgba(255, 226, 142, 0.84),
-        0 0 26px rgba(255, 174, 0, 0.54),
-        0 0 46px rgba(255, 128, 0, 0.28);
-    }
-
-    #colon:before {
-      top: 32%;
-    }
-
-    #colon:after {
-      bottom: 32%;
-    }
-
-    #colon.blink:before,
-    #colon.blink:after {
-      opacity: 0.28;
-      box-shadow: none;
+    /*
+      A nixie tube holds ten stacked cathodes shaped like digits. Only one glows;
+      the others stay visible as dark wire ghosts, each one a little further back.
+      That ghosting is what makes a nixie look like a nixie, so the unlit numerals
+      are always rendered, just very dim.
+    */
+    .numerals {
+      display: none;
     }
 
     /*
-      Seconds are present in the DOM but collapsed by default. When the body gets
-      show-seconds, the main digits shrink and the small seconds block becomes
-      visible, so the full HH:MM:SS layout still fits on the iPad screen.
+      The cathodes are bent wire, not solid shapes, so an unlit digit is drawn as
+      a thin outline (text-stroke) with almost no fill.
+    */
+    .num {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      text-align: center;
+      font-family: "HelveticaNeue-Light", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      font-weight: normal;
+      color: rgba(255, 150, 90, 0.04);
+      -webkit-text-stroke: 0.022em rgba(255, 180, 130, 0.09);
+    }
+
+    /* Depth of the cathode stack: later digits sit slightly further from the glass. */
+    .num-1 { -webkit-transform: scale(0.994); transform: scale(0.994); }
+    .num-2 { -webkit-transform: scale(0.988); transform: scale(0.988); }
+    .num-3 { -webkit-transform: scale(0.982); transform: scale(0.982); }
+    .num-4 { -webkit-transform: scale(0.976); transform: scale(0.976); }
+    .num-5 { -webkit-transform: scale(0.970); transform: scale(0.970); }
+    .num-6 { -webkit-transform: scale(0.964); transform: scale(0.964); }
+    .num-7 { -webkit-transform: scale(0.958); transform: scale(0.958); }
+    .num-8 { -webkit-transform: scale(0.952); transform: scale(0.952); }
+    .num-9 { -webkit-transform: scale(0.946); transform: scale(0.946); }
+
+    /* Tube envelope, anode mesh, glass highlight and bakelite base. */
+    .glass,
+    .base {
+      display: none;
+    }
+
+    /* ---------- colon ---------- */
+
+    .colon .dot {
+      position: absolute;
+      left: 50%;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .colon .dot-top {
+      top: 30%;
+    }
+
+    .colon .dot-bottom {
+      bottom: 30%;
+    }
+
+    .colon.blink .dot {
+      opacity: 0.18;
+      box-shadow: none;
+    }
+
+    /* ---------- seconds, date, meridiem ---------- */
+
+    /*
+      Seconds live in the DOM at all times and are collapsed when switched off, so
+      the layout math never has to rebuild them.
     */
     .seconds {
-      display: inline-block;
-      width: 0;
-      overflow: hidden;
-      opacity: 0;
+      display: none;
       vertical-align: bottom;
-      -webkit-transition: opacity 0.2s ease;
-      transition: opacity 0.2s ease;
-      white-space: nowrap;
     }
 
     body.show-seconds .seconds {
-      width: auto;
-      opacity: 1;
+      display: inline-block;
     }
 
-    body.show-seconds .digit {
-      width: 13.16vw;
-      height: 22.26vw;
-      margin: 0 0.5vw;
-    }
-
-    body.show-seconds #colon {
-      width: 3.85vw;
-      height: 22.26vw;
-      margin: 0 0.57vw;
-    }
-
-    body.show-seconds #colon:before,
-    body.show-seconds #colon:after {
-      width: 1.27vw;
-      height: 1.27vw;
-      margin-left: -0.635vw;
-    }
-
-    body.show-seconds .seconds .digit {
-      width: 5.9vw;
-      height: 10vw;
-      margin: 0 0.1vw;
-      vertical-align: bottom;
-    }
-
-    body.show-seconds .seconds .seg-a,
-    body.show-seconds .seconds .seg-d,
-    body.show-seconds .seconds .seg-g {
-      height: 9%;
-    }
-
-    body.show-seconds.weight-bold .seconds .seg-a,
-    body.show-seconds.weight-bold .seconds .seg-d,
-    body.show-seconds.weight-bold .seconds .seg-g {
-      height: 10.5%;
-    }
-
-    body.show-seconds .seconds .seg-b,
-    body.show-seconds .seconds .seg-c,
-    body.show-seconds .seconds .seg-e,
-    body.show-seconds .seconds .seg-f {
-      width: 14%;
-      height: 29%;
-    }
-
-    body.show-seconds.weight-bold .seconds .seg-b,
-    body.show-seconds.weight-bold .seconds .seg-c,
-    body.show-seconds.weight-bold .seconds .seg-e,
-    body.show-seconds.weight-bold .seconds .seg-f {
-      width: 16%;
-      height: 28%;
-    }
-
-    /* Small temporary message after changing a setting. */
-    #status {
-      position: fixed;
-      left: 50%;
-      bottom: 5vh;
-      max-width: 84vw;
-      padding: 0.7em 1em;
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: 999px;
-      font-size: 3.6vw;
-      letter-spacing: 0.08em;
+    #date-line {
+      display: none;
+      font-weight: bold;
+      letter-spacing: 0.16em;
       text-transform: uppercase;
-      white-space: nowrap;
-      opacity: 0;
-      background: rgba(0, 0, 0, 0.35);
-      -webkit-transform: translate(-50%, 10px);
-      transform: translate(-50%, 10px);
-      -webkit-transition: opacity 0.25s ease, -webkit-transform 0.25s ease;
-      transition: opacity 0.25s ease, transform 0.25s ease;
+      color: currentColor;
+    }
+
+    body.show-date #date-line {
+      display: block;
+    }
+
+    #meridiem {
+      display: none;
+      position: absolute;
+      right: 4%;
+      top: 6%;
+      letter-spacing: 0.12em;
+      font-weight: bold;
+      color: currentColor;
+      opacity: 0.75;
+    }
+
+    body.hour12 #meridiem {
+      display: block;
+    }
+
+    /* ---------- LED mode ---------- */
+
+    /*
+      Classic seven segment LED module: a dark plastic panel, almost invisible
+      unlit segments and a strong, layered halo around the lit ones. The halo is
+      built from several box-shadow rings, which is the cheapest convincing bloom
+      on an old GPU (no filter: blur, which is slow on iOS 9).
+    */
+    body.mode-led .frame,
+    body.mode-nixie .frame,
+    body.mode-vfd .frame,
+    body.mode-lcd .frame {
+      overflow: hidden;
+    }
+
+    body.mode-led .frame {
+      background:
+        radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.05), transparent 45%),
+        linear-gradient(180deg, #161616, #090909 55%, #040404);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.05),
+        inset 0 -2px 20px rgba(0, 0, 0, 0.7),
+        0 18px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    body.mode-led .seg i {
+      background: rgba(255, 255, 255, 0.035);
+    }
+
+    /* The lit body is the theme colour with a brighter top edge, like lit plastic. */
+    body.mode-led .seg.on i {
+      background-color: currentColor;
+      background-image: -webkit-linear-gradient(top, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0.05) 60%, rgba(255, 255, 255, 0));
+      background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0.05) 60%, rgba(255, 255, 255, 0));
+    }
+
+    /* ---------- VFD mode ---------- */
+
+    /*
+      Vacuum fluorescent display: phosphor segments behind a smoked glass tube.
+      Two details sell it: the unlit segments stay clearly visible as grey-blue
+      bars, and thin horizontal filament wires cross the whole display.
+    */
+    body.mode-vfd .frame {
+      background:
+        radial-gradient(circle at 50% 40%, rgba(0, 220, 255, 0.05), transparent 60%),
+        linear-gradient(180deg, #0a1215, #04090b 60%, #020506);
+      box-shadow:
+        inset 0 0 60px rgba(0, 190, 230, 0.07),
+        inset 0 1px 0 rgba(180, 255, 255, 0.06),
+        0 18px 60px rgba(0, 0, 0, 0.55);
+    }
+
+    body.mode-vfd .seg i {
+      background: rgba(150, 225, 255, 0.09);
+    }
+
+    body.mode-vfd .seg.on i {
+      background: #b6fdff;
+    }
+
+    body.mode-vfd .seg.on:before {
+      box-shadow:
+        0 0 14px rgba(160, 250, 255, 0.8),
+        0 0 34px rgba(0, 225, 255, 0.5),
+        0 0 68px rgba(0, 170, 255, 0.3),
+        0 0 110px rgba(0, 130, 255, 0.16);
+    }
+
+    body.mode-vfd .colon .dot {
+      background: #a8fbff;
+      box-shadow:
+        0 0 10px rgba(150, 250, 255, 0.7),
+        0 0 26px rgba(0, 220, 255, 0.45),
+        0 0 50px rgba(0, 170, 255, 0.25);
+    }
+
+    body.mode-vfd #date-line,
+    body.mode-vfd #meridiem {
+      color: #a8fbff;
+      text-shadow: 0 0 10px rgba(0, 220, 255, 0.55), 0 0 26px rgba(0, 170, 255, 0.3);
+    }
+
+    .filaments {
+      display: none;
+      position: absolute;
+      left: 0;
+      top: 0;
+      right: 0;
+      bottom: 0;
       pointer-events: none;
+      opacity: 0.5;
     }
 
-    #status.visible {
-      opacity: 0.9;
-      -webkit-transform: translate(-50%, 0);
-      transform: translate(-50%, 0);
+    body.mode-vfd .filaments {
+      display: block;
     }
 
-    /* Quiet settings entry point. It stays visible but does not compete with the clock. */
+    /* ---------- LCD mode ---------- */
+
+    /*
+      Backlit LCD, the kind used in alarm clocks and calculators: the panel itself
+      is the light source, the digits are dark, and every unlit segment stays
+      faintly readable. No glow at all - and a short transition, because real
+      LCD segments do not switch instantly.
+    */
+    body.mode-lcd .frame {
+      box-shadow:
+        inset 0 0 0 1px rgba(0, 0, 0, 0.25),
+        inset 0 2px 18px rgba(0, 0, 0, 0.28),
+        0 16px 50px rgba(0, 0, 0, 0.55);
+    }
+
+    body.mode-lcd .seg i {
+      background: rgba(18, 22, 16, 0.09);
+      -webkit-transition: background 0.13s linear;
+      transition: background 0.13s linear;
+    }
+
+    body.mode-lcd .seg.on i {
+      background: rgba(15, 19, 14, 0.9);
+    }
+
+    body.mode-lcd .colon .dot {
+      background: rgba(15, 19, 14, 0.9);
+    }
+
+    body.mode-lcd .colon.blink .dot {
+      opacity: 0.09;
+    }
+
+    body.mode-lcd #date-line,
+    body.mode-lcd #meridiem {
+      color: rgba(15, 19, 14, 0.86);
+      text-shadow: none;
+    }
+
+    /* Viewing angle darkening at the panel edges plus a flat sheen on the glass. */
+    .lcd-glass {
+      display: none;
+      position: absolute;
+      left: 0;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(circle at 50% 45%, rgba(255, 255, 255, 0.16), transparent 55%),
+        linear-gradient(160deg, rgba(255, 255, 255, 0.12), transparent 35%, rgba(0, 0, 0, 0.12));
+    }
+
+    body.mode-lcd .lcd-glass {
+      display: block;
+    }
+
+    /* ---------- Nixie mode ---------- */
+
+    body.mode-nixie .frame {
+      background:
+        radial-gradient(circle at 50% 85%, rgba(255, 120, 30, 0.07), transparent 60%),
+        linear-gradient(180deg, #191411, #0c0908 60%, #060404);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 190, 120, 0.06),
+        inset 0 -30px 60px rgba(255, 90, 0, 0.05),
+        0 18px 60px rgba(0, 0, 0, 0.6);
+    }
+
+    body.mode-nixie .segments {
+      display: none;
+    }
+
+    body.mode-nixie .numerals {
+      display: block;
+    }
+
+    body.mode-nixie .glass,
+    body.mode-nixie .base {
+      display: block;
+    }
+
+    /* Tube envelope: rounded glass, dark inside, bright rim where light grazes it. */
+    .glass {
+      position: absolute;
+      left: 0;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      border-radius: 46% 46% 28% 28% / 26% 26% 16% 16%;
+      background:
+        linear-gradient(90deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.01) 16%, rgba(0, 0, 0, 0) 45%, rgba(0, 0, 0, 0) 62%, rgba(255, 255, 255, 0.02) 86%, rgba(255, 255, 255, 0.08)),
+        radial-gradient(circle at 50% 40%, rgba(255, 120, 40, 0.05), rgba(0, 0, 0, 0.35) 75%);
+      box-shadow:
+        inset 0 0 30px rgba(255, 130, 40, 0.05),
+        inset 0 14px 26px rgba(0, 0, 0, 0.45),
+        inset 0 -10px 20px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Anode mesh in front of the cathodes. */
+    .glass:before {
+      content: "";
+      position: absolute;
+      left: 8%;
+      top: 6%;
+      right: 8%;
+      bottom: 10%;
+      opacity: 0.5;
+      background:
+        repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0, rgba(255, 255, 255, 0.05) 1px, transparent 1px, transparent 5px),
+        repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.05) 0, rgba(255, 255, 255, 0.05) 1px, transparent 1px, transparent 5px);
+    }
+
+    /* Specular streak on the glass. */
+    .glass:after {
+      content: "";
+      position: absolute;
+      left: 9%;
+      top: 8%;
+      width: 10%;
+      bottom: 30%;
+      border-radius: 999px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.02));
+      opacity: 0.55;
+    }
+
+    /* Bakelite base at the bottom of the tube. */
+    .base {
+      position: absolute;
+      left: 14%;
+      right: 14%;
+      bottom: 0;
+      height: 11%;
+      border-radius: 6% 6% 34% 34% / 12% 12% 90% 90%;
+      background: linear-gradient(180deg, #241b15, #0e0a08 70%, #050403);
+      box-shadow: inset 0 1px 0 rgba(255, 190, 130, 0.1);
+    }
+
+    /*
+      A lit cathode is a glowing wire surrounded by an orange plasma haze: bright
+      outline (text-stroke), soft fill, and several shadow rings for the bloom.
+    */
+    body.mode-nixie .num.on {
+      color: rgba(255, 128, 40, 0.42);
+      -webkit-text-stroke: 0.028em #ffb267;
+      text-shadow:
+        0 0 5px rgba(255, 200, 140, 0.85),
+        0 0 14px rgba(255, 145, 55, 0.9),
+        0 0 34px rgba(255, 110, 20, 0.6),
+        0 0 70px rgba(255, 80, 0, 0.38),
+        0 0 120px rgba(255, 60, 0, 0.2);
+      -webkit-transform: scale(1);
+      transform: scale(1);
+      -webkit-animation: nixie-flicker 5s ease-in-out infinite;
+      animation: nixie-flicker 5s ease-in-out infinite;
+    }
+
+    /* Neon never sits perfectly still. The movement here is deliberately small. */
+    @-webkit-keyframes nixie-flicker {
+      0%, 100% { opacity: 1; }
+      42% { opacity: 1; }
+      45% { opacity: 0.92; }
+      47% { opacity: 1; }
+      78% { opacity: 0.95; }
+      80% { opacity: 1; }
+    }
+
+    @keyframes nixie-flicker {
+      0%, 100% { opacity: 1; }
+      42% { opacity: 1; }
+      45% { opacity: 0.92; }
+      47% { opacity: 1; }
+      78% { opacity: 0.95; }
+      80% { opacity: 1; }
+    }
+
+    body.mode-nixie .colon .dot {
+      background: #ff8f34;
+      box-shadow:
+        0 0 6px rgba(255, 200, 140, 0.9),
+        0 0 16px rgba(255, 145, 55, 0.8),
+        0 0 34px rgba(255, 100, 10, 0.5);
+    }
+
+    body.mode-nixie #date-line,
+    body.mode-nixie #meridiem {
+      color: #ff9a45;
+      text-shadow: 0 0 10px rgba(255, 140, 50, 0.6), 0 0 26px rgba(255, 90, 0, 0.32);
+    }
+
+    /* ---------- Flat mode ---------- */
+
+    body.mode-flat .frame {
+      background: none;
+      box-shadow: none;
+    }
+
+    body.mode-flat .seg i {
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.07);
+      -webkit-clip-path: none;
+      clip-path: none;
+    }
+
+    body.mode-flat .seg.on i {
+      background: currentColor;
+    }
+
+    body.mode-flat #date-line,
+    body.mode-flat #meridiem {
+      text-shadow: none;
+    }
+
+    /* ---------- colour themes ---------- */
+
+    /*
+      A theme sets the body colour, which the segments pick up through
+      currentColor, and the glow rings for LED mode. VFD and nixie keep their own
+      authentic phosphor/neon colours; for LCD the theme picks the backlight.
+    */
+    body.theme-amber { background: #050505; color: #ffb648; }
+    body.theme-red { background: #050404; color: #ff6b5e; }
+    body.theme-green { background: #040705; color: #7dff97; }
+    body.theme-ice { background: #04070a; color: #96ecff; }
+
+    body.mode-led.theme-amber .seg.on:before,
+    body.mode-led.theme-amber .colon .dot {
+      box-shadow:
+        0 0 12px rgba(255, 226, 142, 0.9),
+        0 0 30px rgba(255, 174, 0, 0.6),
+        0 0 60px rgba(255, 128, 0, 0.34),
+        0 0 100px rgba(255, 90, 0, 0.16);
+    }
+
+    body.mode-led.theme-red .seg.on:before,
+    body.mode-led.theme-red .colon .dot {
+      box-shadow:
+        0 0 12px rgba(255, 150, 142, 0.9),
+        0 0 30px rgba(255, 84, 72, 0.6),
+        0 0 60px rgba(255, 40, 24, 0.34),
+        0 0 100px rgba(255, 0, 0, 0.16);
+    }
+
+    body.mode-led.theme-green .seg.on:before,
+    body.mode-led.theme-green .colon .dot {
+      box-shadow:
+        0 0 12px rgba(180, 255, 190, 0.9),
+        0 0 30px rgba(94, 255, 116, 0.6),
+        0 0 60px rgba(28, 230, 68, 0.34),
+        0 0 100px rgba(0, 180, 55, 0.16);
+    }
+
+    body.mode-led.theme-ice .seg.on:before,
+    body.mode-led.theme-ice .colon .dot {
+      box-shadow:
+        0 0 12px rgba(200, 250, 255, 0.9),
+        0 0 30px rgba(105, 224, 255, 0.6),
+        0 0 60px rgba(32, 170, 255, 0.34),
+        0 0 100px rgba(0, 100, 255, 0.16);
+    }
+
+    body.mode-led #date-line,
+    body.mode-led #meridiem {
+      text-shadow: 0 0 10px rgba(255, 255, 255, 0.28), 0 0 26px currentColor;
+    }
+
+    /* LCD backlights. The digits stay dark, so only the panel colour changes. */
+    body.mode-lcd.theme-amber .frame { background: linear-gradient(180deg, #f0bd63, #d99a3c 55%, #c8862c); }
+    body.mode-lcd.theme-red .frame { background: linear-gradient(180deg, #f0a68f, #dd7f68 55%, #cc6b53); }
+    body.mode-lcd.theme-green .frame { background: linear-gradient(180deg, #cbe485, #a8ca55 55%, #93b944); }
+    body.mode-lcd.theme-ice .frame { background: linear-gradient(180deg, #b7e6f7, #86c9e6 55%, #6fb8d9); }
+
+    body.mode-lcd.theme-amber { background: #0d0a06; }
+    body.mode-lcd.theme-red { background: #0d0706; }
+    body.mode-lcd.theme-green { background: #090c06; }
+    body.mode-lcd.theme-ice { background: #060b0d; }
+
+    /* Flat mode softens the background a little; there is no panel to look at. */
+    body.mode-flat.theme-amber { background: #101010; color: #ffd166; }
+    body.mode-flat.theme-red { background: #120d0d; color: #ff7b72; }
+    body.mode-flat.theme-green { background: #0c100d; color: #8df5a6; }
+    body.mode-flat.theme-ice { background: #0c1013; color: #9ad7ff; }
+
+    /* Night dimming touches only the clock, never the background. */
+    body.dim #clock {
+      opacity: 0.5;
+    }
+
+    /* ---------- settings UI ---------- */
+
     #settings-button {
       position: fixed;
-      top: 4vh;
+      top: 3vh;
       right: 3vw;
       z-index: 20;
-      width: 38px;
-      height: 38px;
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      width: 40px;
+      height: 40px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 50%;
-      background: rgba(0, 0, 0, 0.16);
-      color: rgba(255, 255, 255, 0.48);
-      font-size: 20px;
-      line-height: 36px;
+      background: rgba(0, 0, 0, 0.2);
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 22px;
+      line-height: 38px;
       text-align: center;
       cursor: pointer;
     }
 
-    /*
-      Settings panel. It is plain HTML controls instead of form elements because
-      old mobile Safari styling is more predictable this way.
-    */
+    body.mode-lcd #settings-button {
+      border-color: rgba(0, 0, 0, 0.2);
+      background: rgba(0, 0, 0, 0.25);
+    }
+
     #settings-panel {
       position: fixed;
-      top: 8vh;
+      top: 7vh;
       right: 3vw;
       z-index: 21;
-      width: 74vw;
-      max-width: 420px;
-      max-height: 84vh;
+      width: 78vw;
+      max-width: 430px;
+      max-height: 86vh;
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
       padding: 12px 12px 10px;
       border: 1px solid rgba(255, 255, 255, 0.12);
       border-radius: 14px;
-      background: rgba(10, 10, 10, 0.94);
-      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+      background: rgba(9, 9, 9, 0.95);
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
       text-align: left;
       opacity: 0;
       visibility: hidden;
@@ -454,7 +796,7 @@
       font-size: 12px;
       letter-spacing: 0.18em;
       text-transform: uppercase;
-      color: rgba(255, 255, 255, 0.76);
+      color: rgba(255, 255, 255, 0.78);
     }
 
     .settings-row {
@@ -466,7 +808,7 @@
       font-size: 10px;
       letter-spacing: 0.14em;
       text-transform: uppercase;
-      color: rgba(255, 255, 255, 0.56);
+      color: rgba(255, 255, 255, 0.55);
     }
 
     .settings-options {
@@ -480,7 +822,7 @@
       border: 1px solid rgba(255, 255, 255, 0.12);
       border-radius: 9px;
       background: rgba(255, 255, 255, 0.04);
-      color: rgba(255, 255, 255, 0.84);
+      color: rgba(255, 255, 255, 0.85);
       font-size: 11px;
       letter-spacing: 0.08em;
       text-transform: uppercase;
@@ -489,252 +831,66 @@
 
     .option-button.active {
       border-color: currentColor;
-      background: rgba(255, 255, 255, 0.08);
-      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.09);
+      color: #fff;
     }
 
     .settings-hint {
-      display: none;
-      margin-top: 2px;
+      margin-top: 4px;
       font-size: 10px;
-      line-height: 1.45;
+      line-height: 1.5;
       color: rgba(255, 255, 255, 0.42);
     }
 
-    /* Color themes. These classes are applied to body by JavaScript. */
-    body.theme-amber {
-      background: #070707;
-      color: #ffc44d;
+    #status {
+      position: fixed;
+      left: 50%;
+      bottom: 4vh;
+      z-index: 10;
+      max-width: 84vw;
+      padding: 0.7em 1.1em;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 999px;
+      background: rgba(0, 0, 0, 0.45);
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 15px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      opacity: 0;
+      -webkit-transform: translate(-50%, 10px);
+      transform: translate(-50%, 10px);
+      -webkit-transition: opacity 0.25s ease, -webkit-transform 0.25s ease;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      pointer-events: none;
     }
 
-    body.theme-amber .digit .seg.on {
-      box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.36),
-        0 0 12px rgba(255, 226, 142, 0.9),
-        0 0 28px rgba(255, 174, 0, 0.62),
-        0 0 54px rgba(255, 128, 0, 0.34),
-        0 0 78px rgba(255, 90, 0, 0.16);
-    }
-
-    body.theme-amber #colon:before,
-    body.theme-amber #colon:after {
-      box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.36),
-        0 0 11px rgba(255, 226, 142, 0.84),
-        0 0 26px rgba(255, 174, 0, 0.54),
-        0 0 46px rgba(255, 128, 0, 0.28);
-    }
-
-    body.theme-red {
-      background: #060606;
-      color: #ff695d;
-    }
-
-    body.theme-red .digit .seg.on {
-      box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.32),
-        0 0 12px rgba(255, 150, 142, 0.9),
-        0 0 28px rgba(255, 84, 72, 0.62),
-        0 0 54px rgba(255, 40, 24, 0.34),
-        0 0 78px rgba(255, 0, 0, 0.16);
-    }
-
-    body.theme-red #colon:before,
-    body.theme-red #colon:after {
-      box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.32),
-        0 0 11px rgba(255, 150, 142, 0.84),
-        0 0 26px rgba(255, 84, 72, 0.54),
-        0 0 46px rgba(255, 40, 24, 0.28);
-    }
-
-    body.theme-green {
-      background: #060807;
-      color: #83ff9a;
-    }
-
-    body.theme-green .digit .seg.on {
-      box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.32),
-        0 0 12px rgba(180, 255, 190, 0.9),
-        0 0 28px rgba(94, 255, 116, 0.62),
-        0 0 54px rgba(28, 230, 68, 0.34),
-        0 0 78px rgba(0, 180, 55, 0.16);
-    }
-
-    body.theme-green #colon:before,
-    body.theme-green #colon:after {
-      box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.32),
-        0 0 11px rgba(180, 255, 190, 0.84),
-        0 0 26px rgba(94, 255, 116, 0.54),
-        0 0 46px rgba(28, 230, 68, 0.28);
-    }
-
-    body.theme-ice {
-      background: #050709;
-      color: #98efff;
-    }
-
-    body.theme-ice .digit .seg.on {
-      box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.34),
-        0 0 12px rgba(200, 250, 255, 0.9),
-        0 0 28px rgba(105, 224, 255, 0.62),
-        0 0 54px rgba(32, 170, 255, 0.34),
-        0 0 78px rgba(0, 100, 255, 0.16);
-    }
-
-    body.theme-ice #colon:before,
-    body.theme-ice #colon:after {
-      box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.34),
-        0 0 11px rgba(200, 250, 255, 0.84),
-        0 0 26px rgba(105, 224, 255, 0.54),
-        0 0 46px rgba(32, 170, 255, 0.28);
-    }
-
-    body.style-flat .digit .seg.on,
-    body.style-flat #colon:before,
-    body.style-flat #colon:after {
-      box-shadow: none;
-    }
-
-    body.style-flat.theme-amber {
-      background: #101010;
-      color: #ffd166;
-    }
-
-    body.style-flat.theme-red {
-      background: #120d0d;
-      color: #ff7b72;
-    }
-
-    body.style-flat.theme-green {
-      background: #0c100d;
-      color: #8df5a6;
-    }
-
-    body.style-flat.theme-ice {
-      background: #0c1013;
-      color: #9ad7ff;
-    }
-
-    /* Night dimming keeps the background black and dims only the clock panel. */
-    body.dim #clock {
-      opacity: 0.56;
-    }
-
-    /*
-      Portrait mode is secondary for this project. It is constrained more tightly
-      so the retro panel cannot run beyond the right edge of the screen.
-    */
-    @media (orientation: portrait) {
-      .wrap {
-        padding-left: 0;
-        padding-right: 0;
-        -webkit-transform: translateY(-3vh);
-        transform: translateY(-3vh);
-      }
-
-      #clock {
-        margin-left: 0;
-        padding-left: 2vw;
-        padding-right: 2vw;
-        max-width: 94vw;
-        box-sizing: border-box;
-      }
-
-      .digit {
-        width: 18.2vw;
-        height: 32.2vw;
-        margin: 0 0.48vw;
-      }
-
-      #colon {
-        width: 5.2vw;
-        height: 32.2vw;
-        margin: 0 0.52vw;
-      }
-
-      #colon:before,
-      #colon:after {
-        width: 1.9vw;
-        height: 1.9vw;
-        margin-left: -0.95vw;
-      }
-
-      body.show-seconds .seconds .digit {
-        width: 5.73vw;
-        height: 10.14vw;
-        margin: 0 0.08vw;
-      }
-
-      body.show-seconds .digit {
-        width: 12.74vw;
-        height: 22.54vw;
-        margin: 0 0.34vw;
-      }
-
-      body.show-seconds #colon {
-        width: 3.64vw;
-        height: 22.54vw;
-        margin: 0 0.36vw;
-      }
-
-      body.show-seconds #colon:before,
-      body.show-seconds #colon:after {
-        width: 1.33vw;
-        height: 1.33vw;
-        margin-left: -0.665vw;
-      }
-
-      #status {
-        font-size: 4.4vw;
-      }
-
-      #date-line {
-        margin-top: 1.8vh;
-        font-size: 4vw;
-      }
+    #status.visible {
+      opacity: 0.92;
+      -webkit-transform: translate(-50%, 0);
+      transform: translate(-50%, 0);
     }
   </style>
+  <!-- Filled in by applyMetrics(); everything screen dependent lives here. -->
+  <style id="metrics"></style>
 </head>
 <body>
-  <!-- Clock face: each digit is seven spans, one for each segment. -->
-  <div class="wrap">
+  <div class="stage">
     <div id="clock">
-      <div id="time">
-        <div class="digit" id="hours-tens">
-          <span class="seg seg-a"></span><span class="seg seg-b"></span><span class="seg seg-c"></span><span class="seg seg-d"></span><span class="seg seg-e"></span><span class="seg seg-f"></span><span class="seg seg-g"></span>
-        </div>
-        <div class="digit" id="hours-ones">
-          <span class="seg seg-a"></span><span class="seg seg-b"></span><span class="seg seg-c"></span><span class="seg seg-d"></span><span class="seg seg-e"></span><span class="seg seg-f"></span><span class="seg seg-g"></span>
-        </div>
-        <div id="colon"></div>
-        <div class="digit" id="minutes-tens">
-          <span class="seg seg-a"></span><span class="seg seg-b"></span><span class="seg seg-c"></span><span class="seg seg-d"></span><span class="seg seg-e"></span><span class="seg seg-f"></span><span class="seg seg-g"></span>
-        </div>
-        <div class="digit" id="minutes-ones">
-          <span class="seg seg-a"></span><span class="seg seg-b"></span><span class="seg seg-c"></span><span class="seg seg-d"></span><span class="seg seg-e"></span><span class="seg seg-f"></span><span class="seg seg-g"></span>
-        </div>
-        <div class="seconds" id="seconds-wrap">
-          <div class="digit" id="seconds-tens">
-            <span class="seg seg-a"></span><span class="seg seg-b"></span><span class="seg seg-c"></span><span class="seg seg-d"></span><span class="seg seg-e"></span><span class="seg seg-f"></span><span class="seg seg-g"></span>
-          </div>
-          <div class="digit" id="seconds-ones">
-            <span class="seg seg-a"></span><span class="seg seg-b"></span><span class="seg seg-c"></span><span class="seg seg-d"></span><span class="seg seg-e"></span><span class="seg seg-f"></span><span class="seg seg-g"></span>
-          </div>
-        </div>
+      <div class="frame" id="frame">
+        <div class="lcd-glass"></div>
+        <div id="time"></div>
+        <div class="filaments"></div>
+        <div id="date-line"></div>
+        <div id="meridiem">AM</div>
       </div>
-      <div id="date-line"></div>
     </div>
   </div>
 
-  <!-- The settings UI is intentionally simple and touch-friendly for old Safari. -->
   <div id="settings-button">+</div>
   <div id="settings-panel">
     <div class="settings-title" data-i18n="settingsTitle">Clock Settings</div>
+
     <div class="settings-row">
       <div class="settings-label" data-i18n="language">Language</div>
       <div class="settings-options" id="language-options">
@@ -742,22 +898,37 @@
         <span class="option-button" data-language="ru" data-i18n="russian">Russian</span>
       </div>
     </div>
+
     <div class="settings-row">
-      <div class="settings-label" data-i18n="style">Style</div>
-      <div class="settings-options" id="style-options">
-        <span class="option-button" data-style="retro" data-i18n="retro">Retro</span>
-        <span class="option-button" data-style="flat" data-i18n="flat">Flat</span>
+      <div class="settings-label" data-i18n="display">Display</div>
+      <div class="settings-options" id="mode-options">
+        <span class="option-button" data-mode="led" data-i18n="led">LED</span>
+        <span class="option-button" data-mode="nixie" data-i18n="nixie">Nixie</span>
+        <span class="option-button" data-mode="vfd" data-i18n="vfd">VFD</span>
+        <span class="option-button" data-mode="lcd" data-i18n="lcd">LCD</span>
+        <span class="option-button" data-mode="flat" data-i18n="flat">Flat</span>
       </div>
     </div>
+
     <div class="settings-row">
-      <div class="settings-label" data-i18n="theme">Theme</div>
+      <div class="settings-label" data-i18n="theme">Colour</div>
       <div class="settings-options" id="theme-options">
         <span class="option-button" data-theme="amber" data-i18n="amber">Amber</span>
         <span class="option-button" data-theme="red" data-i18n="red">Red</span>
         <span class="option-button" data-theme="green" data-i18n="green">Green</span>
         <span class="option-button" data-theme="ice" data-i18n="ice">Ice</span>
       </div>
+      <div class="settings-hint" data-i18n="themeHint">Colour applies to LED, LCD backlight and Flat. Nixie and VFD keep their own tube colours.</div>
     </div>
+
+    <div class="settings-row">
+      <div class="settings-label" data-i18n="format">Format</div>
+      <div class="settings-options" id="format-options">
+        <span class="option-button" data-format="24" data-i18n="h24">24 h</span>
+        <span class="option-button" data-format="12" data-i18n="h12">12 h</span>
+      </div>
+    </div>
+
     <div class="settings-row">
       <div class="settings-label" data-i18n="weight">Weight</div>
       <div class="settings-options" id="weight-options">
@@ -765,6 +936,7 @@
         <span class="option-button" data-weight="bold" data-i18n="bold">Bold</span>
       </div>
     </div>
+
     <div class="settings-row">
       <div class="settings-label" data-i18n="seconds">Seconds</div>
       <div class="settings-options" id="seconds-options">
@@ -772,6 +944,7 @@
         <span class="option-button" data-seconds="on" data-i18n="on">On</span>
       </div>
     </div>
+
     <div class="settings-row">
       <div class="settings-label" data-i18n="date">Date</div>
       <div class="settings-options" id="date-options">
@@ -779,6 +952,7 @@
         <span class="option-button" data-date="on" data-i18n="on">On</span>
       </div>
     </div>
+
     <div class="settings-row">
       <div class="settings-label" data-i18n="colonBlink">Colon Blink</div>
       <div class="settings-options" id="blink-options">
@@ -786,6 +960,7 @@
         <span class="option-button" data-blink="off" data-i18n="off">Off</span>
       </div>
     </div>
+
     <div class="settings-row">
       <div class="settings-label" data-i18n="nightDim">Night Dim</div>
       <div class="settings-options" id="dim-options">
@@ -793,71 +968,93 @@
         <span class="option-button" data-dim="off" data-i18n="off">Off</span>
       </div>
     </div>
-    <div class="settings-hint" data-i18n="hint">Tap plus to open settings. Tap screen outside the panel to switch themes quickly. Hold on the clock to toggle seconds.</div>
+
+    <div class="settings-hint" data-i18n="hint">Tap the clock to change colour. Hold the clock to toggle seconds.</div>
   </div>
+
   <div id="status"></div>
 
   <script>
     (function () {
+      "use strict";
+
+      /* ---------------------------------------------------------------
+         Model
+         --------------------------------------------------------------- */
+
+      /* Which of the seven segments are lit for each character. */
+      var SEGMENT_MAP = {
+        "0": "abcdef",
+        "1": "bc",
+        "2": "abdeg",
+        "3": "abcdg",
+        "4": "bcfg",
+        "5": "acdfg",
+        "6": "acdefg",
+        "7": "abc",
+        "8": "abcdefg",
+        "9": "abcdfg",
+        " ": ""
+      };
+
+      var SEGMENTS = ["a", "b", "c", "d", "e", "f", "g"];
+      var MODES = ["led", "nixie", "vfd", "lcd", "flat"];
+      var THEMES = ["amber", "red", "green", "ice"];
+      var WEIGHTS = ["thin", "bold"];
+      var LANGUAGES = ["en", "ru"];
+
       /*
-        Map each number to the seven-segment pieces that should be lit.
-        JavaScript only toggles classes; the actual segment shape is CSS.
+         Proportions of one display, expressed in units of the main digit height.
+         applyMetrics() multiplies them by the digit height that fits the current
+         screen, so the same numbers work on an iPad mini and on a 12.9" Pro.
+         Nixie tubes are wider and need more space around them than LED segments.
       */
-      var digitMap = {
-        "0": ["a", "b", "c", "d", "e", "f"],
-        "1": ["b", "c"],
-        "2": ["a", "b", "d", "e", "g"],
-        "3": ["a", "b", "c", "d", "g"],
-        "4": ["b", "c", "f", "g"],
-        "5": ["a", "c", "d", "f", "g"],
-        "6": ["a", "c", "d", "e", "f", "g"],
-        "7": ["a", "b", "c"],
-        "8": ["a", "b", "c", "d", "e", "f", "g"],
-        "9": ["a", "b", "c", "d", "f", "g"]
+      var LAYOUT = {
+        led:   { cellW: 0.60, gap: 0.030, colonW: 0.26, dot: 0.115, padX: 0.24, padY: 0.20, radius: 0.14 },
+        nixie: { cellW: 0.74, gap: 0.045, colonW: 0.30, dot: 0.09,  padX: 0.26, padY: 0.22, radius: 0.10 },
+        vfd:   { cellW: 0.60, gap: 0.032, colonW: 0.26, dot: 0.11,  padX: 0.26, padY: 0.22, radius: 0.08 },
+        lcd:   { cellW: 0.60, gap: 0.036, colonW: 0.26, dot: 0.10,  padX: 0.28, padY: 0.24, radius: 0.06 },
+        flat:  { cellW: 0.60, gap: 0.026, colonW: 0.24, dot: 0.11,  padX: 0.02, padY: 0.02, radius: 0 }
       };
 
-      var body = document.body;
-      var clockNode = document.getElementById("clock");
-      var colonNode = document.getElementById("colon");
-      var dateNode = document.getElementById("date-line");
-      var statusNode = document.getElementById("status");
-      var settingsButton = document.getElementById("settings-button");
-      var settingsPanel = document.getElementById("settings-panel");
-      var digits = {
-        ht: document.getElementById("hours-tens"),
-        ho: document.getElementById("hours-ones"),
-        mt: document.getElementById("minutes-tens"),
-        mo: document.getElementById("minutes-ones"),
-        st: document.getElementById("seconds-tens"),
-        so: document.getElementById("seconds-ones")
-      };
+      var SECONDS_SCALE = 0.42;   /* seconds digit height relative to the main digits */
+      var SECONDS_LEAD = 0.10;    /* space between the minutes and the seconds group */
+      var DATE_SIZE = 0.19;       /* date font size */
+      var DATE_GAP = 0.12;        /* space between the digits and the date line */
+      var MIN_DIGIT = 44;
+      var MAX_DIGIT = 460;
 
-      var themes = ["amber", "red", "green", "ice"];
-      var styles = ["retro", "flat"];
-      var weights = ["thin", "bold"];
-      var languages = ["en", "ru"];
-      var dayNames = {
+      var DAY_NAMES = {
         en: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
         ru: ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"]
       };
-      var monthNames = {
+
+      var MONTH_NAMES = {
         en: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
         ru: ["Января", "Февраля", "Марта", "Апреля", "Мая", "Июня", "Июля", "Августа", "Сентября", "Октября", "Ноября", "Декабря"]
       };
-      var labels = {
+
+      var LABELS = {
         en: {
           settingsTitle: "Clock Settings",
           language: "Language",
           english: "English",
           russian: "Russian",
-          style: "Style",
-          retro: "Retro",
+          display: "Display",
+          led: "LED",
+          nixie: "Nixie",
+          vfd: "VFD",
+          lcd: "LCD",
           flat: "Flat",
-          theme: "Theme",
+          theme: "Colour",
+          themeHint: "Colour applies to LED, LCD backlight and Flat. Nixie and VFD keep their own tube colours.",
           amber: "Amber",
           red: "Red",
           green: "Green",
           ice: "Ice",
+          format: "Format",
+          h24: "24 h",
+          h12: "12 h",
           weight: "Weight",
           thin: "Thin",
           bold: "Bold",
@@ -868,10 +1065,11 @@
           on: "On",
           off: "Off",
           auto: "Auto",
-          hint: "Tap plus to open settings. Tap screen outside the panel to switch themes quickly. Hold on the clock to toggle seconds.",
+          hint: "Tap the clock to change colour. Hold the clock to toggle seconds.",
           statusLanguage: "language: ",
-          statusStyle: "style: ",
-          statusTheme: "theme: ",
+          statusDisplay: "display: ",
+          statusTheme: "colour: ",
+          statusFormat: "format: ",
           statusWeight: "weight: ",
           statusSecondsOn: "seconds on",
           statusSecondsOff: "seconds off",
@@ -887,14 +1085,21 @@
           language: "Язык",
           english: "Английский",
           russian: "Русский",
-          style: "Стиль",
-          retro: "Ретро",
+          display: "Индикатор",
+          led: "Светодиод",
+          nixie: "Лампы",
+          vfd: "Люминесцент",
+          lcd: "ЖК",
           flat: "Плоский",
           theme: "Цвет",
+          themeHint: "Цвет действует на светодиоды, подсветку ЖК и плоский стиль. У ламп и люминесцентного индикатора свой цвет.",
           amber: "Янтарь",
           red: "Красный",
           green: "Зеленый",
           ice: "Лед",
+          format: "Формат",
+          h24: "24 ч",
+          h12: "12 ч",
           weight: "Толщина",
           thin: "Тонкий",
           bold: "Толстый",
@@ -905,10 +1110,11 @@
           on: "Вкл",
           off: "Выкл",
           auto: "Авто",
-          hint: "Нажмите плюс для настроек. Нажатие по часам меняет цвет. Долгое нажатие включает или выключает секунды.",
+          hint: "Тап по часам меняет цвет. Долгое нажатие включает или выключает секунды.",
           statusLanguage: "язык: ",
-          statusStyle: "стиль: ",
+          statusDisplay: "индикатор: ",
           statusTheme: "цвет: ",
+          statusFormat: "формат: ",
           statusWeight: "толщина: ",
           statusSecondsOn: "секунды включены",
           statusSecondsOff: "секунды выключены",
@@ -920,39 +1126,62 @@
           statusDimOff: "ночной режим выкл"
         }
       };
+
+      var DEFAULTS = {
+        mode: "led",
+        theme: "amber",
+        weight: "thin",
+        language: "en",
+        hour12: false,
+        showSeconds: false,
+        showDate: false,
+        blink: true,
+        autoDim: true
+      };
+
+      /* ---------------------------------------------------------------
+         DOM
+         --------------------------------------------------------------- */
+
+      var body = document.body;
+      var clockNode = document.getElementById("clock");
+      var timeNode = document.getElementById("time");
+      var dateNode = document.getElementById("date-line");
+      var meridiemNode = document.getElementById("meridiem");
+      var metricsNode = document.getElementById("metrics");
+      var statusNode = document.getElementById("status");
+      var settingsButton = document.getElementById("settings-button");
+      var settingsPanel = document.getElementById("settings-panel");
+
       var settings = loadSettings();
+      var cells = {};          /* role -> { segments: {a..g}, numerals: [10] , value: string } */
+      var colonCell = null;
+      var i18nNodes = [];
+      var statusTimer = null;
       var holdTimer = null;
       var holdTriggered = false;
-      var statusTimer = null;
+      var resizeTimer = null;
       var shiftIndex = 0;
+      var lastDateKey = "";
+      var lastDimState = null;
+      var lastViewport = "";
+      var wakeLock = null;
 
       /*
-        Very small burn-in protection. Every few minutes the clock panel moves by
-        one pixel. It should be invisible in normal use but avoids keeping every
-        lit pixel in the exact same place for days.
+        Burn in protection. A clock that shows the same pixels for days can mark
+        an old LCD, so the whole panel creeps around a small square.
       */
-      var shiftPositions = [
-        { x: 0, y: 0 },
-        { x: 1, y: 0 },
-        { x: 1, y: 1 },
-        { x: 0, y: 1 },
-        { x: -1, y: 1 },
-        { x: -1, y: 0 },
-        { x: -1, y: -1 },
-        { x: 0, y: -1 },
-        { x: 1, y: -1 }
+      var SHIFTS = [
+        { x: 0, y: 0 }, { x: 2, y: 0 }, { x: 2, y: 2 }, { x: 0, y: 2 },
+        { x: -2, y: 2 }, { x: -2, y: 0 }, { x: -2, y: -2 }, { x: 0, y: -2 }, { x: 2, y: -2 }
       ];
 
-      function pad(value) {
-        return value < 10 ? "0" + value : String(value);
-      }
+      /* ---------------------------------------------------------------
+         Settings
+         --------------------------------------------------------------- */
 
-      /*
-        Settings are stored locally on the iPad. If localStorage is unavailable
-        or contains invalid JSON, the clock falls back to safe defaults.
-      */
       function loadSettings() {
-        var raw;
+        var raw = null;
 
         try {
           raw = window.localStorage ? window.localStorage.getItem("clockSettings") : null;
@@ -961,59 +1190,79 @@
         }
 
         if (!raw) {
-          return {
-            theme: "amber",
-            showSeconds: false,
-            showDate: false,
-            style: "retro",
-            weight: "thin",
-            language: "en",
-            blink: true,
-            autoDim: true
-          };
+          return copyDefaults();
         }
 
         try {
-          return JSON.parse(raw);
+          return normalize(JSON.parse(raw));
         } catch (error) {
-          return {
-            theme: "amber",
-            showSeconds: false,
-            showDate: false,
-            style: "retro",
-            weight: "thin",
-            language: "en",
-            blink: true,
-            autoDim: true
-          };
+          return copyDefaults();
         }
       }
 
-      /* Older saved settings may miss newer fields, so normalize before using. */
-      function normalizeSettings() {
-        if (!hasValue(themes, settings.theme)) {
-          settings.theme = "amber";
+      function copyDefaults() {
+        var result = {};
+        var key;
+
+        for (key in DEFAULTS) {
+          if (DEFAULTS.hasOwnProperty(key)) {
+            result[key] = DEFAULTS[key];
+          }
         }
 
-        if (!hasValue(styles, settings.style)) {
-          settings.style = "retro";
-        }
-
-        if (!hasValue(weights, settings.weight)) {
-          settings.weight = "thin";
-        }
-
-        if (!hasValue(languages, settings.language)) {
-          settings.language = "en";
-        }
-
-        settings.showSeconds = !!settings.showSeconds;
-        settings.showDate = !!settings.showDate;
-        settings.blink = settings.blink !== false;
-        settings.autoDim = settings.autoDim !== false;
+        return result;
       }
 
-      function hasValue(list, value) {
+      /*
+        Saved settings can come from any older version of the clock, so anything
+        unknown falls back to the default. The pre-refactor build stored
+        style: "retro" | "flat" instead of a display mode.
+      */
+      function normalize(saved) {
+        var result = copyDefaults();
+
+        if (saved && typeof saved === "object") {
+          if (saved.style === "flat" && !saved.mode) {
+            result.mode = "flat";
+          }
+
+          if (contains(MODES, saved.mode)) {
+            result.mode = saved.mode;
+          }
+
+          if (contains(THEMES, saved.theme)) {
+            result.theme = saved.theme;
+          }
+
+          if (contains(WEIGHTS, saved.weight)) {
+            result.weight = saved.weight;
+          }
+
+          if (contains(LANGUAGES, saved.language)) {
+            result.language = saved.language;
+          }
+
+          result.hour12 = saved.hour12 === true;
+          result.showSeconds = saved.showSeconds === true;
+          result.showDate = saved.showDate === true;
+          result.blink = saved.blink !== false;
+          result.autoDim = saved.autoDim !== false;
+        }
+
+        return result;
+      }
+
+      function saveSettings() {
+        try {
+          if (window.localStorage) {
+            window.localStorage.setItem("clockSettings", JSON.stringify(settings));
+          }
+        } catch (error) {
+          /* Private mode on old Safari throws here. Losing the settings is fine. */
+        }
+      }
+
+      function contains(list, value) {
         var i;
 
         for (i = 0; i < list.length; i++) {
@@ -1025,80 +1274,387 @@
         return false;
       }
 
-      function saveSettings() {
-        try {
-          if (window.localStorage) {
-            window.localStorage.setItem("clockSettings", JSON.stringify(settings));
-          }
-        } catch (error) {}
-      }
+      /* ---------------------------------------------------------------
+         Building the display
+         --------------------------------------------------------------- */
 
       /*
-        Helper for body-level feature flags such as show-seconds, style-flat,
-        weight-bold, dim and settings-open. classList would be nicer, but manual
-        className editing is safer on old iOS Safari.
+        Every cell carries both a segment layer and a numeral layer. Switching the
+        display mode then costs nothing at runtime: CSS decides which layer is
+        visible, and the paint code keeps both in sync.
       */
-      function setClassFlag(className, enabled) {
+      function createDigitCell(role) {
+        var cell = document.createElement("div");
+        var glass = document.createElement("div");
+        var base = document.createElement("div");
+        var numerals = document.createElement("div");
+        var segments = document.createElement("div");
+        var record = { node: cell, segments: {}, numerals: [], value: null };
+        var i;
+        var seg;
+        var inner;
+        var num;
+
+        cell.className = "cell digit";
+        glass.className = "glass";
+        base.className = "base";
+        numerals.className = "layer numerals";
+        segments.className = "layer segments";
+
+        for (i = 0; i < 10; i++) {
+          num = document.createElement("span");
+          num.className = "num num-" + i;
+          num.appendChild(document.createTextNode(String(i)));
+          numerals.appendChild(num);
+          record.numerals.push(num);
+        }
+
+        for (i = 0; i < SEGMENTS.length; i++) {
+          seg = document.createElement("span");
+          inner = document.createElement("i");
+          seg.className = segmentClass(SEGMENTS[i]);
+          seg.appendChild(inner);
+          segments.appendChild(seg);
+          record.segments[SEGMENTS[i]] = seg;
+        }
+
+        cell.appendChild(glass);
+        cell.appendChild(numerals);
+        cell.appendChild(segments);
+        cell.appendChild(base);
+
+        cells[role] = record;
+        return cell;
+      }
+
+      function segmentClass(name) {
+        var horizontal = name === "a" || name === "d" || name === "g";
+        return "seg seg-" + name + " " + (horizontal ? "seg-h" : "seg-v");
+      }
+
+      function createColonCell() {
+        var cell = document.createElement("div");
+        var top = document.createElement("span");
+        var bottom = document.createElement("span");
+
+        cell.className = "cell colon";
+        top.className = "dot dot-top";
+        bottom.className = "dot dot-bottom";
+        cell.appendChild(top);
+        cell.appendChild(bottom);
+
+        colonCell = cell;
+        return cell;
+      }
+
+      function buildDisplay() {
+        var seconds = document.createElement("div");
+
+        timeNode.appendChild(createDigitCell("ht"));
+        timeNode.appendChild(createDigitCell("ho"));
+        timeNode.appendChild(createColonCell());
+        timeNode.appendChild(createDigitCell("mt"));
+        timeNode.appendChild(createDigitCell("mo"));
+
+        seconds.className = "seconds";
+        seconds.appendChild(createDigitCell("st"));
+        seconds.appendChild(createDigitCell("so"));
+        timeNode.appendChild(seconds);
+      }
+
+      /* ---------------------------------------------------------------
+         Layout
+         --------------------------------------------------------------- */
+
+      /*
+        The one place that knows about the screen. It picks the largest digit
+        height at which the whole clock still fits, then writes the resulting
+        pixel sizes into the #metrics stylesheet. Called on load, on resize, on
+        rotation and whenever a setting changes the shape of the clock.
+      */
+      function applyMetrics() {
+        var box = LAYOUT[settings.mode] || LAYOUT.led;
+        var viewportW = window.innerWidth || document.documentElement.clientWidth;
+        var viewportH = window.innerHeight || document.documentElement.clientHeight;
+        var availableW = viewportW * 0.96;
+        var availableH = viewportH * 0.92;
+        var secondsCellW = box.cellW * SECONDS_SCALE;
+        var secondsGap = box.gap * SECONDS_SCALE;
+        var unitsW = 4 * (box.cellW + 2 * box.gap) + (box.colonW + 2 * box.gap) + 2 * box.padX;
+        var unitsH = 1 + 2 * box.padY;
+        var digitH;
+        var css;
+
+        lastViewport = viewportW + "x" + viewportH;
+
+        if (settings.showSeconds) {
+          unitsW += SECONDS_LEAD + 2 * (secondsCellW + 2 * secondsGap);
+        }
+
+        if (settings.showDate) {
+          unitsH += DATE_GAP + DATE_SIZE * 1.4;
+        }
+
+        digitH = Math.min(availableW / unitsW, availableH / unitsH);
+        digitH = Math.max(MIN_DIGIT, Math.min(MAX_DIGIT, Math.floor(digitH)));
+
+        css = [
+          ".cell{height:" + px(digitH) + "}",
+          ".digit{width:" + px(digitH * box.cellW) + "}",
+          ".cell{margin:0 " + px(digitH * box.gap) + "}",
+          ".colon{width:" + px(digitH * box.colonW) + "}",
+          ".colon .dot{width:" + px(digitH * box.dot) + ";height:" + px(digitH * box.dot) + ";margin-left:" + px(-digitH * box.dot / 2) + "}",
+          ".num{font-size:" + px(digitH * 0.82) + ";line-height:" + px(digitH) + "}",
+          ".seconds{margin-left:" + px(digitH * SECONDS_LEAD) + "}",
+          ".seconds .cell{height:" + px(digitH * SECONDS_SCALE) + ";margin:0 " + px(digitH * secondsGap) + "}",
+          ".seconds .digit{width:" + px(digitH * secondsCellW) + "}",
+          ".seconds .num{font-size:" + px(digitH * SECONDS_SCALE * 0.82) + ";line-height:" + px(digitH * SECONDS_SCALE) + "}",
+          ".frame{padding:" + px(digitH * box.padY) + " " + px(digitH * box.padX) + ";border-radius:" + px(digitH * box.radius) + "}",
+          "#date-line{font-size:" + px(digitH * DATE_SIZE) + ";margin-top:" + px(digitH * DATE_GAP) + "}",
+          "#meridiem{font-size:" + px(digitH * 0.13) + "}",
+          filamentCss(digitH * 0.26)
+        ].join("\n");
+
+        setStyleText(metricsNode, css);
+      }
+
+      /* Horizontal filament wires of a VFD tube, spaced with the digit height. */
+      function filamentCss(spacing) {
+        var line = "rgba(170, 250, 255, 0.06)";
+        var stops = line + " 0, " + line + " 1px, transparent 1px, transparent " + px(spacing);
+
+        return ".filaments{" +
+          "background:-webkit-repeating-linear-gradient(top, " + stops + ");" +
+          "background:repeating-linear-gradient(to bottom, " + stops + ");}";
+      }
+
+      function px(value) {
+        return Math.round(value * 10) / 10 + "px";
+      }
+
+      function setStyleText(node, text) {
+        if (node.styleSheet) {
+          node.styleSheet.cssText = text;
+        } else {
+          node.innerHTML = "";
+          node.appendChild(document.createTextNode(text));
+        }
+      }
+
+      /* ---------------------------------------------------------------
+         Applying settings to the DOM
+         --------------------------------------------------------------- */
+
+      function setFlag(name, enabled) {
         if (enabled) {
-          if (body.className.indexOf(className) === -1) {
-            body.className += (body.className ? " " : "") + className;
+          if (!hasClass(name)) {
+            body.className += (body.className ? " " : "") + name;
           }
         } else {
-          body.className = body.className.replace(new RegExp("(^|\\s)" + className + "(\\s|$)", "g"), " ").replace(/\s+/g, " ").replace(/^\s+|\s+$/g, "");
+          body.className = body.className
+            .replace(new RegExp("(^|\\s)" + name + "(?=\\s|$)", "g"), " ")
+            .replace(/\s+/g, " ")
+            .replace(/^\s+|\s+$/g, "");
         }
       }
 
-      /* Apply the selected visual theme by swapping body.theme-* classes. */
-      function applyTheme() {
+      function hasClass(name) {
+        return new RegExp("(^|\\s)" + name + "(\\s|$)").test(body.className);
+      }
+
+      function setGroup(prefix, list, value) {
         var i;
 
-        for (i = 0; i < themes.length; i++) {
-          body.className = body.className.replace(new RegExp("(^|\\s)theme-" + themes[i] + "(\\s|$)", "g"), " ");
+        for (i = 0; i < list.length; i++) {
+          setFlag(prefix + list[i], list[i] === value);
         }
-
-        body.className = body.className.replace(/\s+/g, " ").replace(/^\s+|\s+$/g, "");
-        body.className += (body.className ? " " : "") + "theme-" + settings.theme;
       }
 
-      function applySeconds() {
-        setClassFlag("show-seconds", settings.showSeconds);
+      function applyAll() {
+        setGroup("mode-", MODES, settings.mode);
+        setGroup("theme-", THEMES, settings.theme);
+        setFlag("weight-bold", settings.weight === "bold");
+        setFlag("show-seconds", settings.showSeconds);
+        setFlag("show-date", settings.showDate);
+        setFlag("hour12", settings.hour12);
+        applyLanguage();
+        applyMetrics();
+        refreshSettingsUI();
+
+        /* The date and dim state are cached, so force a redraw after any change. */
+        lastDateKey = "";
+        lastDimState = null;
+        resetCells();
+        tick();
       }
 
-      function applyDate() {
-        setClassFlag("show-date", settings.showDate);
+      function resetCells() {
+        var role;
+
+        for (role in cells) {
+          if (cells.hasOwnProperty(role)) {
+            cells[role].value = null;
+          }
+        }
       }
 
-      function applyStyle() {
-        setClassFlag("style-flat", settings.style === "flat");
-      }
-
-      function applyWeight() {
-        setClassFlag("weight-bold", settings.weight === "bold");
-      }
-
-      function getLabel(key) {
-        return labels[settings.language][key] || labels.en[key] || key;
+      function label(key) {
+        return LABELS[settings.language][key] || LABELS.en[key] || key;
       }
 
       function applyLanguage() {
+        var i;
+
+        for (i = 0; i < i18nNodes.length; i++) {
+          i18nNodes[i].node.innerHTML = label(i18nNodes[i].key);
+        }
+      }
+
+      function collectI18nNodes() {
         var nodes = document.getElementsByTagName("*");
         var i;
         var key;
 
         for (i = 0; i < nodes.length; i++) {
           key = nodes[i].getAttribute("data-i18n");
+
           if (key) {
-            nodes[i].innerHTML = getLabel(key);
+            i18nNodes.push({ node: nodes[i], key: key });
           }
         }
       }
 
-      function applyDim(now) {
-        var hour = now.getHours();
-        setClassFlag("dim", settings.autoDim && (hour >= 22 || hour < 7));
+      /* ---------------------------------------------------------------
+         Drawing
+         --------------------------------------------------------------- */
+
+      function pad(value) {
+        return value < 10 ? "0" + value : String(value);
       }
 
-      /* Brief feedback label after tapping a setting. */
+      /*
+        Paint one cell. Both layers are updated, and only when the character
+        actually changed, so a normal tick touches at most a couple of digits.
+      */
+      function paintCell(record, character) {
+        var lit = SEGMENT_MAP[character] || "";
+        var i;
+        var name;
+        var node;
+
+        if (record.value === character) {
+          return;
+        }
+
+        record.value = character;
+
+        for (i = 0; i < SEGMENTS.length; i++) {
+          name = SEGMENTS[i];
+          node = record.segments[name];
+          node.className = segmentClass(name) + (lit.indexOf(name) === -1 ? "" : " on");
+        }
+
+        for (i = 0; i < 10; i++) {
+          record.numerals[i].className = "num num-" + i + (String(i) === character ? " on" : "");
+        }
+      }
+
+      function drawTime(now) {
+        var hours = now.getHours();
+        var minutes = pad(now.getMinutes());
+        var seconds = pad(now.getSeconds());
+        var text;
+
+        if (settings.hour12) {
+          meridiemNode.innerHTML = hours < 12 ? "AM" : "PM";
+          hours = hours % 12;
+
+          if (hours === 0) {
+            hours = 12;
+          }
+
+          /* A real 12 hour clock blanks the leading zero instead of showing it. */
+          text = hours < 10 ? " " + hours : String(hours);
+        } else {
+          text = pad(hours);
+        }
+
+        paintCell(cells.ht, text.charAt(0));
+        paintCell(cells.ho, text.charAt(1));
+        paintCell(cells.mt, minutes.charAt(0));
+        paintCell(cells.mo, minutes.charAt(1));
+        paintCell(cells.st, seconds.charAt(0));
+        paintCell(cells.so, seconds.charAt(1));
+      }
+
+      function drawDate(now) {
+        var key = now.getFullYear() + "-" + now.getMonth() + "-" + now.getDate() + "-" + settings.language;
+        var lang = settings.language === "ru" ? "ru" : "en";
+
+        if (key === lastDateKey) {
+          return;
+        }
+
+        lastDateKey = key;
+        dateNode.innerHTML = DAY_NAMES[lang][now.getDay()] + " " + now.getDate() + " " + MONTH_NAMES[lang][now.getMonth()];
+      }
+
+      function applyDim(now) {
+        var hour = now.getHours();
+        var dim = settings.autoDim && (hour >= 22 || hour < 7);
+
+        if (dim !== lastDimState) {
+          lastDimState = dim;
+          setFlag("dim", dim);
+        }
+      }
+
+      function drawColon(now) {
+        var blink = settings.blink && now.getSeconds() % 2 === 1;
+        var next = blink ? "cell colon blink" : "cell colon";
+
+        if (colonCell.className !== next) {
+          colonCell.className = next;
+        }
+      }
+
+      function tick() {
+        var now = new Date();
+
+        drawTime(now);
+        drawColon(now);
+        drawDate(now);
+        applyDim(now);
+        checkViewport();
+      }
+
+      /*
+        Safety net for the layout. Safari on iOS 9 sometimes reports the old size
+        inside the orientationchange handler, and a page restored from the home
+        screen can come back at a size we never saw an event for. Comparing the
+        viewport on every tick costs nothing and makes those cases self healing.
+      */
+      function checkViewport() {
+        var size = (window.innerWidth || 0) + "x" + (window.innerHeight || 0);
+
+        if (size !== lastViewport) {
+          applyMetrics();
+        }
+      }
+
+      function shiftClock() {
+        var position = SHIFTS[shiftIndex];
+        var value = "translate(" + position.x + "px," + position.y + "px)";
+
+        clockNode.style.webkitTransform = value;
+        clockNode.style.transform = value;
+        shiftIndex = (shiftIndex + 1) % SHIFTS.length;
+      }
+
+      /* ---------------------------------------------------------------
+         Interaction
+         --------------------------------------------------------------- */
+
       function showStatus(text) {
         statusNode.innerHTML = text;
         statusNode.className = "visible";
@@ -1112,66 +1668,46 @@
         }, 1400);
       }
 
-      /* Quick tap on the clock cycles through color themes. */
+      function setSetting(name, value) {
+        settings[name] = value;
+        applyAll();
+        saveSettings();
+      }
+
       function cycleTheme() {
         var index = 0;
         var i;
 
-        for (i = 0; i < themes.length; i++) {
-          if (themes[i] === settings.theme) {
+        for (i = 0; i < THEMES.length; i++) {
+          if (THEMES[i] === settings.theme) {
             index = i;
             break;
           }
         }
 
-        settings.theme = themes[(index + 1) % themes.length];
-        applyTheme();
-        saveSettings();
-        showStatus(getLabel("statusTheme") + getLabel(settings.theme));
-        refreshSettingsUI();
+        setSetting("theme", THEMES[(index + 1) % THEMES.length]);
+        showStatus(label("statusTheme") + label(settings.theme));
       }
 
-      /* Long press on the clock toggles seconds without opening the settings panel. */
       function toggleSeconds() {
-        settings.showSeconds = !settings.showSeconds;
-        applySeconds();
-        saveSettings();
-        showStatus(settings.showSeconds ? getLabel("statusSecondsOn") : getLabel("statusSecondsOff"));
-        refreshSettingsUI();
+        setSetting("showSeconds", !settings.showSeconds);
+        showStatus(settings.showSeconds ? label("statusSecondsOn") : label("statusSecondsOff"));
       }
 
-      /* Shared path for settings panel buttons. */
-      function setSetting(name, value) {
-        settings[name] = value;
-        applyTheme();
-        applySeconds();
-        applyDate();
-        applyStyle();
-        applyWeight();
-        applyLanguage();
-        saveSettings();
-        refreshSettingsUI();
-      }
-
-      /* Mark the active option in a segmented settings row. */
-      function setOptionActive(containerId, attr, value) {
-        var container = document.getElementById(containerId);
-        var buttons = container.getElementsByTagName("span");
+      function setOptionActive(containerId, attribute, value) {
+        var buttons = document.getElementById(containerId).getElementsByTagName("span");
         var i;
 
         for (i = 0; i < buttons.length; i++) {
-          if (buttons[i].getAttribute(attr) === value) {
-            buttons[i].className = "option-button active";
-          } else {
-            buttons[i].className = "option-button";
-          }
+          buttons[i].className = buttons[i].getAttribute(attribute) === value ? "option-button active" : "option-button";
         }
       }
 
       function refreshSettingsUI() {
         setOptionActive("language-options", "data-language", settings.language);
-        setOptionActive("style-options", "data-style", settings.style);
+        setOptionActive("mode-options", "data-mode", settings.mode);
         setOptionActive("theme-options", "data-theme", settings.theme);
+        setOptionActive("format-options", "data-format", settings.hour12 ? "12" : "24");
         setOptionActive("weight-options", "data-weight", settings.weight);
         setOptionActive("seconds-options", "data-seconds", settings.showSeconds ? "on" : "off");
         setOptionActive("date-options", "data-date", settings.showDate ? "on" : "off");
@@ -1180,137 +1716,63 @@
       }
 
       function toggleSettingsPanel(forceOpen) {
-        var open = typeof forceOpen === "boolean" ? forceOpen : body.className.indexOf("settings-open") === -1;
-        setClassFlag("settings-open", open);
-      }
-
-      /* Read data-* attributes from the clicked settings option and apply it. */
-      function handleSettingsClick(event) {
-        var target = event.target || event.srcElement;
-        var language = target.getAttribute("data-language");
-        var style = target.getAttribute("data-style");
-        var theme = target.getAttribute("data-theme");
-        var weight = target.getAttribute("data-weight");
-        var seconds = target.getAttribute("data-seconds");
-        var date = target.getAttribute("data-date");
-        var blink = target.getAttribute("data-blink");
-        var dim = target.getAttribute("data-dim");
-
-        if (!language && !style && !theme && !weight && !seconds && !date && !blink && !dim) {
-          return;
-        }
-
-        event.preventDefault();
-        event.cancelBubble = true;
-        if (event.stopPropagation) {
-          event.stopPropagation();
-        }
-
-        if (language) {
-          setSetting("language", language);
-          showStatus(getLabel("statusLanguage") + getLabel(language === "en" ? "english" : "russian"));
-        } else if (style) {
-          setSetting("style", style);
-          showStatus(getLabel("statusStyle") + getLabel(style));
-        } else if (theme) {
-          setSetting("theme", theme);
-          showStatus(getLabel("statusTheme") + getLabel(theme));
-        } else if (weight) {
-          setSetting("weight", weight);
-          showStatus(getLabel("statusWeight") + getLabel(weight));
-        } else if (seconds) {
-          setSetting("showSeconds", seconds === "on");
-          showStatus(seconds === "on" ? getLabel("statusSecondsOn") : getLabel("statusSecondsOff"));
-        } else if (date) {
-          setSetting("showDate", date === "on");
-          showStatus(date === "on" ? getLabel("statusDateOn") : getLabel("statusDateOff"));
-        } else if (blink) {
-          setSetting("blink", blink === "on");
-          showStatus(blink === "on" ? getLabel("statusBlinkOn") : getLabel("statusBlinkOff"));
-        } else if (dim) {
-          setSetting("autoDim", dim === "auto");
-          showStatus(dim === "auto" ? getLabel("statusDimAuto") : getLabel("statusDimOff"));
-        }
-
-        toggleSettingsPanel(false);
+        setFlag("settings-open", typeof forceOpen === "boolean" ? forceOpen : !hasClass("settings-open"));
       }
 
       /*
-        Paint one seven-segment digit.
-        Important detail: the segment letter is extracted from the stable seg-a
-        class, not from the whole className. This prevents old "on" states from
-        sticking when a digit changes from one number to another.
+        Every settings button carries one data-* attribute. This table maps that
+        attribute to the setting it changes and to the status message to show.
       */
-      function paintDigit(node, value) {
-        var segments = node.getElementsByClassName("seg");
-        var active = digitMap[value];
+      var SETTING_ACTIONS = [
+        { attribute: "data-language", apply: function (v) { setSetting("language", v); return label("statusLanguage") + label(v === "en" ? "english" : "russian"); } },
+        { attribute: "data-mode", apply: function (v) { setSetting("mode", v); return label("statusDisplay") + label(v); } },
+        { attribute: "data-theme", apply: function (v) { setSetting("theme", v); return label("statusTheme") + label(v); } },
+        { attribute: "data-format", apply: function (v) { setSetting("hour12", v === "12"); return label("statusFormat") + label(v === "12" ? "h12" : "h24"); } },
+        { attribute: "data-weight", apply: function (v) { setSetting("weight", v); return label("statusWeight") + label(v); } },
+        { attribute: "data-seconds", apply: function (v) { setSetting("showSeconds", v === "on"); return label(v === "on" ? "statusSecondsOn" : "statusSecondsOff"); } },
+        { attribute: "data-date", apply: function (v) { setSetting("showDate", v === "on"); return label(v === "on" ? "statusDateOn" : "statusDateOff"); } },
+        { attribute: "data-blink", apply: function (v) { setSetting("blink", v === "on"); return label(v === "on" ? "statusBlinkOn" : "statusBlinkOff"); } },
+        { attribute: "data-dim", apply: function (v) { setSetting("autoDim", v === "auto"); return label(v === "auto" ? "statusDimAuto" : "statusDimOff"); } }
+      ];
+
+      function handleSettingsClick(event) {
+        var target = event.target || event.srcElement;
         var i;
-        var segmentName;
-        var match;
-        var isOn;
+        var value;
 
-        for (i = 0; i < segments.length; i++) {
-          match = segments[i].className.match(/seg-([a-g])/);
-          segmentName = match ? match[1] : "";
-          isOn = hasValue(active, segmentName);
+        for (i = 0; i < SETTING_ACTIONS.length; i++) {
+          value = target.getAttribute(SETTING_ACTIONS[i].attribute);
 
-          if (isOn) {
-            segments[i].className = "seg seg-" + segmentName + " on";
-          } else {
-            segments[i].className = "seg seg-" + segmentName;
+          if (value) {
+            event.preventDefault();
+
+            if (event.stopPropagation) {
+              event.stopPropagation();
+            }
+
+            showStatus(SETTING_ACTIONS[i].apply(value));
+            toggleSettingsPanel(false);
+            return;
           }
         }
       }
 
-      /* Convert the current Date into six digit values and paint the display. */
-      function drawTime(now) {
-        var hours = pad(now.getHours());
-        var minutes = pad(now.getMinutes());
-        var seconds = pad(now.getSeconds());
+      function isInsideSettings(node) {
+        while (node) {
+          if (node === settingsPanel) {
+            return true;
+          }
 
-        paintDigit(digits.ht, hours.charAt(0));
-        paintDigit(digits.ho, hours.charAt(1));
-        paintDigit(digits.mt, minutes.charAt(0));
-        paintDigit(digits.mo, minutes.charAt(1));
-        paintDigit(digits.st, seconds.charAt(0));
-        paintDigit(digits.so, seconds.charAt(1));
-      }
-
-      function drawDate(now) {
-        var lang = settings.language === "ru" ? "ru" : "en";
-        var text = dayNames[lang][now.getDay()] + " " + now.getDate() + " " + monthNames[lang][now.getMonth()];
-
-        dateNode.innerHTML = text;
-      }
-
-      /* Move the whole clock by one pixel according to shiftPositions. */
-      function updateShift() {
-        var position = shiftPositions[shiftIndex];
-
-        clockNode.style.webkitTransform = "translate(" + position.x + "px," + position.y + "px)";
-        clockNode.style.transform = "translate(" + position.x + "px," + position.y + "px)";
-        shiftIndex = (shiftIndex + 1) % shiftPositions.length;
-      }
-
-      /* Main clock tick: repaint digits, apply night dimming and blink colon. */
-      function updateClock() {
-        var now = new Date();
-
-        drawTime(now);
-        drawDate(now);
-        applyDim(now);
-        if (settings.blink) {
-          colonNode.className = now.getSeconds() % 2 === 0 ? "" : "blink";
-        } else {
-          colonNode.className = "";
+          node = node.parentNode;
         }
+
+        return false;
       }
 
-      /* Start long-press detection unless the user is touching the settings UI. */
       function startHold(event) {
         var target = event.target || event.srcElement;
 
-        if (event && event.touches && event.touches.length > 1) {
+        if (event.touches && event.touches.length > 1) {
           return;
         }
 
@@ -1335,9 +1797,7 @@
       function handleTap(event) {
         var target = event.target || event.srcElement;
 
-        if (event) {
-          event.preventDefault();
-        }
+        event.preventDefault();
 
         if (holdTriggered) {
           holdTriggered = false;
@@ -1353,7 +1813,7 @@
           return;
         }
 
-        if (body.className.indexOf("settings-open") !== -1) {
+        if (hasClass("settings-open")) {
           toggleSettingsPanel(false);
           return;
         }
@@ -1361,55 +1821,94 @@
         cycleTheme();
       }
 
-      /* Manual parent walk for iOS 9 compatibility. */
-      function isInsideSettings(node) {
-        while (node) {
-          if (node === settingsPanel) {
-            return true;
-          }
-          node = node.parentNode;
+      function handleResize() {
+        if (resizeTimer) {
+          clearTimeout(resizeTimer);
         }
-        return false;
+
+        resizeTimer = setTimeout(applyMetrics, 120);
       }
 
-      /* Initial render and event wiring. */
-      normalizeSettings();
-      applyTheme();
-      applySeconds();
-      applyDate();
-      applyStyle();
-      applyWeight();
-      applyLanguage();
-      refreshSettingsUI();
-      updateShift();
-      updateClock();
-      setInterval(updateClock, 250);
-      setInterval(updateShift, 180000);
+      /* ---------------------------------------------------------------
+         Offline and screen wake
+         --------------------------------------------------------------- */
+
+      /*
+        Three generations of iPad in one place:
+        - iOS 9 has no Service Worker and uses the Application Cache manifest,
+        - modern iOS dropped the Application Cache and uses sw.js,
+        - the Wake Lock API (iOS 16.4+) keeps the screen on; older iPads simply
+          do not have it and rely on the device auto-lock setting.
+      */
+      function setupOffline() {
+        if (window.applicationCache) {
+          window.applicationCache.addEventListener("updateready", function () {
+            try {
+              window.applicationCache.swapCache();
+              window.location.reload();
+            } catch (error) {
+              /* Nothing to do: the next launch will pick the new cache up. */
+            }
+          }, false);
+        }
+
+        if (navigator.serviceWorker && window.location.protocol.indexOf("http") === 0) {
+          navigator.serviceWorker.register("sw.js").then(null, function () {});
+        }
+      }
+
+      function requestWakeLock() {
+        if (!navigator.wakeLock || wakeLock) {
+          return;
+        }
+
+        try {
+          navigator.wakeLock.request("screen").then(function (lock) {
+            wakeLock = lock;
+            lock.addEventListener("release", function () {
+              wakeLock = null;
+            });
+          }, function () {});
+        } catch (error) {
+          /* Not supported here, the screen will follow the device settings. */
+        }
+      }
+
+      /* ---------------------------------------------------------------
+         Start
+         --------------------------------------------------------------- */
+
+      buildDisplay();
+      collectI18nNodes();
+      applyAll();
+      shiftClock();
+      setupOffline();
+      requestWakeLock();
+
+      setInterval(tick, 200);
+      setInterval(shiftClock, 180000);
 
       settingsPanel.onclick = handleSettingsClick;
       settingsPanel.ontouchstart = function (event) {
-        if (event && event.stopPropagation) {
+        if (event.stopPropagation) {
           event.stopPropagation();
         }
       };
+
       document.addEventListener("touchstart", startHold, false);
       document.addEventListener("touchend", endHold, false);
       document.addEventListener("touchcancel", endHold, false);
       document.addEventListener("click", handleTap, false);
+      window.addEventListener("resize", handleResize, false);
+      window.addEventListener("orientationchange", handleResize, false);
 
-      /*
-        Application Cache update hook.
-        When clock.appcache changes, iOS Safari downloads the new cache. This
-        handler swaps it in and reloads so the user sees the latest page.
-      */
-      if (window.applicationCache) {
-        window.applicationCache.addEventListener("updateready", function () {
-          try {
-            window.applicationCache.swapCache();
-            window.location.reload();
-          } catch (error) {}
-        }, false);
-      }
+      document.addEventListener("visibilitychange", function () {
+        if (!document.hidden) {
+          requestWakeLock();
+          applyMetrics();
+          tick();
+        }
+      }, false);
     })();
   </script>
 </body>
