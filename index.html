@@ -722,15 +722,20 @@
       stays the theme colour, which is what currentColor in the shadow picks up.
     */
     /*
-      Same recipe as a lit segment - a white glyph over a coloured bloom - dimmed
-      as a whole with opacity. Dimming the two ingredients separately instead
-      washes the colour out of the text and leaves it looking grey.
+      The text is built out of the same three parts as a lit segment, in the same
+      order, so that it lands at the same brightness: a solid coloured glyph
+      (the zero blur shadow), a half transparent white wash over it, and a
+      coloured bloom around it. Dimming the parts separately, or leaning on
+      opacity, either drains the colour out of the text or pushes it off the
+      brightness of the digits it sits under.
     */
     body.mode-vfd #date-line,
     body.mode-vfd #meridiem {
-      -webkit-text-fill-color: rgba(255, 255, 255, 0.78);
-      text-shadow: 0 0 5px currentColor, 0 0 16px currentColor;
-      opacity: 0.62;
+      -webkit-text-fill-color: rgba(255, 255, 255, 0.5);
+      text-shadow:
+        0 0 0 currentColor,
+        0 0 8px currentColor,
+        0 0 22px currentColor;
     }
 
     /* LCD backlights. The digits stay dark, so only the panel colour changes. */
