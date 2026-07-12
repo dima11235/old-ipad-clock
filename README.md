@@ -40,7 +40,19 @@ https://dima11235.github.io/old-ipad-clock/
 - `sw.js` - service worker, офлайн-кэш для современных iPad и браузеров.
 - `clock.appcache` - манифест Application Cache для старого Safari на iOS 9.
 - `.nojekyll` - говорит GitHub Pages отдавать файлы как есть, без Jekyll.
-- `docs/DEVELOPMENT.md` - подробная документация по устройству кода.
+- `docs/DEVELOPMENT.md` - устройство кода и принципы эмуляции индикаторов.
+- `docs/VERIFICATION.md` - как проверить, что часы отображаются правильно.
+- `tools/check.js` - сама проверка: раскладки, яркость, скриншоты. На iPad не попадает.
+
+## Проверка после правки
+
+```bash
+cd tools
+npm install
+node check.js
+```
+
+Скрипт открывает часы в headless Chrome и проверяет то, что не проверяется глазами: влезают ли часы во все пять поколений iPad во всех режимах, и светится ли дата с той же яркостью, что и цифры. Подробности - в [docs/VERIFICATION.md](docs/VERIFICATION.md).
 
 ## Офлайн на трёх поколениях iPad
 
@@ -48,7 +60,7 @@ https://dima11235.github.io/old-ipad-clock/
 - Safari начиная с iOS 14 не знает Application Cache и использует `sw.js`;
 - на устройстве всегда работает ровно один из двух механизмов, они не конфликтуют.
 
-После изменения `index.html` нужно поднять версию **в обоих местах**: комментарий `# v54` в `clock.appcache` и `CACHE_NAME` в `sw.js`. Иначе iPad может продолжать показывать старую версию.
+После изменения `index.html` нужно поднять версию **в обоих местах**: комментарий `# v55` в `clock.appcache` и `CACHE_NAME` в `sw.js`. Иначе iPad может продолжать показывать старую версию.
 
 ## Публикация через GitHub Pages
 

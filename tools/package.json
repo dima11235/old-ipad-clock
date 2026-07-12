@@ -1,0 +1,16 @@
+{
+  "name": "retro-clock-tools",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Rendering checks for the clock. Nothing here ships to the iPad.",
+  "scripts": {
+    "check": "node check.js",
+    "fit": "node check.js fit",
+    "brightness": "node check.js brightness",
+    "shots": "node check.js shots"
+  },
+  "devDependencies": {
+    "pngjs": "^7.0.0",
+    "puppeteer": "^25.3.0"
+  }
+}

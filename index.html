@@ -710,9 +710,20 @@
         0 0 100px rgba(0, 100, 255, 0.16);
     }
 
+    /*
+      A lit LED segment is the theme colour with a white gradient washed over it,
+      so plain coloured text next to it comes out too dark - on red, where the
+      colour itself is dim, by a quarter. The text is therefore stacked the same
+      way: an opaque coloured glyph (the zero blur shadow), a light white wash
+      over it, and the halo around it.
+    */
     body.mode-led #date-line,
     body.mode-led #meridiem {
-      text-shadow: 0 0 10px rgba(255, 255, 255, 0.28), 0 0 26px currentColor;
+      -webkit-text-fill-color: rgba(255, 255, 255, 0.28);
+      text-shadow:
+        0 0 0 currentColor,
+        0 0 10px rgba(255, 255, 255, 0.28),
+        0 0 26px currentColor;
     }
 
     /*
