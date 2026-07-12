@@ -108,6 +108,11 @@
       inside its own box, which would leave the bevelled corners dark. So it comes
       from a pill shaped pseudo element sitting *inside* the body: the light then
       spills out through the whole segment, corners included.
+
+      The pill hugs the edge of the body as closely as the bevel allows. Sink it
+      any deeper and the brightest inner ring of the halo ends up hidden under
+      the opaque body, which makes the digits look flat next to the colon dots -
+      their halo starts right at their own edge.
     */
     .seg {
       position: absolute;
@@ -130,18 +135,19 @@
       border-radius: 999px;
     }
 
+    /* The bevel only eats the last 7% of a bar, so the pill can stay near full thickness. */
     .seg-h:before {
       left: 9%;
       right: 9%;
-      top: 24%;
-      bottom: 24%;
+      top: 6%;
+      bottom: 6%;
     }
 
     .seg-v:before {
-      left: 24%;
-      right: 24%;
-      top: 8%;
-      bottom: 8%;
+      left: 6%;
+      right: 6%;
+      top: 5%;
+      bottom: 5%;
     }
 
     .seg-h i {
