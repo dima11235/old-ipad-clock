@@ -364,13 +364,6 @@
       built from several box-shadow rings, which is the cheapest convincing bloom
       on an old GPU (no filter: blur, which is slow on iOS 9).
     */
-    body.mode-led .frame,
-    body.mode-nixie .frame,
-    body.mode-vfd .frame,
-    body.mode-lcd .frame {
-      overflow: hidden;
-    }
-
     body.mode-led .frame {
       background:
         radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.05), transparent 45%),
@@ -435,6 +428,11 @@
       background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.42));
     }
 
+    /*
+      The frame is not clipped: with the panel this tight around the digits,
+      overflow: hidden would cut the halo off at the panel edge. So the overlays
+      that used to rely on that clipping round their own corners instead.
+    */
     .filaments {
       display: none;
       position: absolute;
@@ -442,6 +440,7 @@
       top: 0;
       right: 0;
       bottom: 0;
+      border-radius: inherit;
       pointer-events: none;
       opacity: 0.5;
     }
@@ -497,6 +496,7 @@
       top: 0;
       right: 0;
       bottom: 0;
+      border-radius: inherit;
       pointer-events: none;
       background:
         radial-gradient(circle at 50% 45%, rgba(255, 255, 255, 0.16), transparent 55%),
@@ -1026,12 +1026,19 @@
          screen, so the same numbers work on an iPad mini and on a 12.9" Pro.
          Nixie tubes are wider and need more space around them than LED segments.
       */
+      /*
+        cellW is the width of a digit as a fraction of its height. The row of
+        four digits is what runs out of room first on every iPad, so a narrower
+        digit is a taller digit: this is the number to touch if the clock should
+        read from further away. 0.56 is the usual proportion of a seven segment
+        digit; much below that the digits start to look condensed.
+      */
       var LAYOUT = {
-        led:   { cellW: 0.60, gap: 0.030, colonW: 0.26, dot: 0.115, padX: 0.24, padY: 0.20, radius: 0.14 },
-        nixie: { cellW: 0.74, gap: 0.045, colonW: 0.30, dot: 0.09,  padX: 0.26, padY: 0.22, radius: 0.10 },
-        vfd:   { cellW: 0.60, gap: 0.032, colonW: 0.26, dot: 0.11,  padX: 0.26, padY: 0.22, radius: 0.08 },
-        lcd:   { cellW: 0.60, gap: 0.036, colonW: 0.26, dot: 0.10,  padX: 0.28, padY: 0.24, radius: 0.06 },
-        flat:  { cellW: 0.60, gap: 0.026, colonW: 0.24, dot: 0.11,  padX: 0.02, padY: 0.02, radius: 0 }
+        led:   { cellW: 0.56, gap: 0.022, colonW: 0.20, dot: 0.10, padX: 0.06, padY: 0.05, radius: 0.05 },
+        nixie: { cellW: 0.68, gap: 0.026, colonW: 0.22, dot: 0.08, padX: 0.05, padY: 0.04, radius: 0.05 },
+        vfd:   { cellW: 0.56, gap: 0.024, colonW: 0.20, dot: 0.10, padX: 0.07, padY: 0.06, radius: 0.05 },
+        lcd:   { cellW: 0.56, gap: 0.028, colonW: 0.20, dot: 0.09, padX: 0.08, padY: 0.07, radius: 0.04 },
+        flat:  { cellW: 0.56, gap: 0.020, colonW: 0.18, dot: 0.10, padX: 0.01, padY: 0.01, radius: 0 }
       };
 
       var SECONDS_SCALE = 0.42;   /* seconds digit height relative to the main digits */
@@ -1039,7 +1046,7 @@
       var DATE_SIZE = 0.19;       /* date font size */
       var DATE_GAP = 0.12;        /* space between the digits and the date line */
       var MIN_DIGIT = 44;
-      var MAX_DIGIT = 460;
+      var MAX_DIGIT = 700;
 
       var DAY_NAMES = {
         en: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
@@ -1393,8 +1400,8 @@
         var box = LAYOUT[settings.mode] || LAYOUT.led;
         var viewportW = window.innerWidth || document.documentElement.clientWidth;
         var viewportH = window.innerHeight || document.documentElement.clientHeight;
-        var availableW = viewportW * 0.96;
-        var availableH = viewportH * 0.92;
+        var availableW = viewportW * 0.99;
+        var availableH = viewportH * 0.97;
         var secondsCellW = box.cellW * SECONDS_SCALE;
         var secondsGap = box.gap * SECONDS_SCALE;
         var unitsW = 4 * (box.cellW + 2 * box.gap) + (box.colonW + 2 * box.gap) + 2 * box.padX;
