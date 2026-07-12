@@ -286,9 +286,8 @@
     .num-8 { -webkit-transform: scale(0.952); transform: scale(0.952); }
     .num-9 { -webkit-transform: scale(0.946); transform: scale(0.946); }
 
-    /* Tube envelope, anode mesh, glass highlight and bakelite base. */
-    .glass,
-    .base {
+    /* Tube envelope, anode mesh and glass highlight. */
+    .glass {
       display: none;
     }
 
@@ -527,8 +526,7 @@
       display: block;
     }
 
-    body.mode-nixie .glass,
-    body.mode-nixie .base {
+    body.mode-nixie .glass {
       display: block;
     }
 
@@ -539,7 +537,7 @@
       top: 0;
       right: 0;
       bottom: 0;
-      border-radius: 46% 46% 28% 28% / 26% 26% 16% 16%;
+      border-radius: 46% 46% 42% 42% / 26% 26% 24% 24%;
       background:
         linear-gradient(90deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.01) 16%, rgba(0, 0, 0, 0) 45%, rgba(0, 0, 0, 0) 62%, rgba(255, 255, 255, 0.02) 86%, rgba(255, 255, 255, 0.08)),
         radial-gradient(circle at 50% 40%, rgba(255, 120, 40, 0.05), rgba(0, 0, 0, 0.35) 75%);
@@ -556,7 +554,7 @@
       left: 8%;
       top: 6%;
       right: 8%;
-      bottom: 10%;
+      bottom: 6%;
       opacity: 0.5;
       background:
         repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0, rgba(255, 255, 255, 0.05) 1px, transparent 1px, transparent 5px),
@@ -574,18 +572,6 @@
       border-radius: 999px;
       background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.02));
       opacity: 0.55;
-    }
-
-    /* Bakelite base at the bottom of the tube. */
-    .base {
-      position: absolute;
-      left: 14%;
-      right: 14%;
-      bottom: 0;
-      height: 11%;
-      border-radius: 6% 6% 34% 34% / 12% 12% 90% 90%;
-      background: linear-gradient(180deg, #241b15, #0e0a08 70%, #050403);
-      box-shadow: inset 0 1px 0 rgba(255, 190, 130, 0.1);
     }
 
     /*
@@ -1310,7 +1296,6 @@
       function createDigitCell(role) {
         var cell = document.createElement("div");
         var glass = document.createElement("div");
-        var base = document.createElement("div");
         var numerals = document.createElement("div");
         var segments = document.createElement("div");
         var record = { node: cell, segments: {}, numerals: [], value: null };
@@ -1321,7 +1306,6 @@
 
         cell.className = "cell digit";
         glass.className = "glass";
-        base.className = "base";
         numerals.className = "layer numerals";
         segments.className = "layer segments";
 
@@ -1345,7 +1329,6 @@
         cell.appendChild(glass);
         cell.appendChild(numerals);
         cell.appendChild(segments);
-        cell.appendChild(base);
 
         cells[role] = record;
         return cell;
