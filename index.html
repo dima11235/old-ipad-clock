@@ -721,10 +721,16 @@
       glyph with a coloured bloom. text-fill-color paints the glyph while color
       stays the theme colour, which is what currentColor in the shadow picks up.
     */
+    /*
+      Same recipe as a lit segment - a white glyph over a coloured bloom - dimmed
+      as a whole with opacity. Dimming the two ingredients separately instead
+      washes the colour out of the text and leaves it looking grey.
+    */
     body.mode-vfd #date-line,
     body.mode-vfd #meridiem {
-      -webkit-text-fill-color: rgba(255, 255, 255, 0.92);
-      text-shadow: 0 0 8px currentColor, 0 0 22px currentColor, 0 0 44px currentColor;
+      -webkit-text-fill-color: rgba(255, 255, 255, 0.78);
+      text-shadow: 0 0 5px currentColor, 0 0 16px currentColor;
+      opacity: 0.62;
     }
 
     /* LCD backlights. The digits stay dark, so only the panel colour changes. */
