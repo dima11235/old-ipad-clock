@@ -396,47 +396,43 @@
 
     /*
       Vacuum fluorescent display: phosphor segments behind a smoked glass tube.
-      Two details sell it: the unlit segments stay clearly visible as grey-blue
-      bars, and thin horizontal filament wires cross the whole display.
+      Two details sell it: the unlit segments stay clearly visible as faintly
+      glowing bars, and thin horizontal filament wires cross the whole display.
+
+      The phosphor is blue-green, but coloured filters over the tube were normal
+      in radios, calculators and car dashboards, so the tube follows the chosen
+      colour and Ice gives the classic untinted look. A lit VFD segment reads as
+      an almost white core inside a coloured halo, which is why the body carries
+      a heavy white wash on top of the theme colour - unlike an LED, which keeps
+      its colour right to the middle.
     */
     body.mode-vfd .frame {
       background:
-        radial-gradient(circle at 50% 40%, rgba(0, 220, 255, 0.05), transparent 60%),
-        linear-gradient(180deg, #0a1215, #04090b 60%, #020506);
+        radial-gradient(circle at 50% 40%, rgba(255, 255, 255, 0.035), transparent 60%),
+        linear-gradient(180deg, #0d1113, #05080a 60%, #020405);
       box-shadow:
-        inset 0 0 60px rgba(0, 190, 230, 0.07),
-        inset 0 1px 0 rgba(180, 255, 255, 0.06),
+        inset 0 0 60px rgba(255, 255, 255, 0.035),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05),
         0 18px 60px rgba(0, 0, 0, 0.55);
     }
 
+    /* Unlit phosphor is never black: it stays visible in the colour of the tube. */
     body.mode-vfd .seg i {
-      background: rgba(150, 225, 255, 0.09);
+      background: currentColor;
+      opacity: 0.13;
     }
 
     body.mode-vfd .seg.on i {
-      background: #b6fdff;
-    }
-
-    body.mode-vfd .seg.on:before {
-      box-shadow:
-        0 0 14px rgba(160, 250, 255, 0.8),
-        0 0 34px rgba(0, 225, 255, 0.5),
-        0 0 68px rgba(0, 170, 255, 0.3),
-        0 0 110px rgba(0, 130, 255, 0.16);
+      opacity: 1;
+      background-color: currentColor;
+      background-image: -webkit-linear-gradient(top, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.42));
+      background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.42));
     }
 
     body.mode-vfd .colon .dot {
-      background: #a8fbff;
-      box-shadow:
-        0 0 10px rgba(150, 250, 255, 0.7),
-        0 0 26px rgba(0, 220, 255, 0.45),
-        0 0 50px rgba(0, 170, 255, 0.25);
-    }
-
-    body.mode-vfd #date-line,
-    body.mode-vfd #meridiem {
-      color: #a8fbff;
-      text-shadow: 0 0 10px rgba(0, 220, 255, 0.55), 0 0 26px rgba(0, 170, 255, 0.3);
+      background-color: currentColor;
+      background-image: -webkit-linear-gradient(top, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.42));
+      background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.42));
     }
 
     .filaments {
@@ -679,8 +675,15 @@
     body.theme-green { background: #040705; color: #7dff97; }
     body.theme-ice { background: #04070a; color: #96ecff; }
 
+    /*
+      LED and VFD share the halo of a given colour. What separates them is the
+      body underneath: an LED bar is saturated, a VFD bar is washed out to near
+      white, and its unlit segments keep glowing faintly.
+    */
     body.mode-led.theme-amber .seg.on:before,
-    body.mode-led.theme-amber .colon .dot {
+    body.mode-led.theme-amber .colon .dot,
+    body.mode-vfd.theme-amber .seg.on:before,
+    body.mode-vfd.theme-amber .colon .dot {
       box-shadow:
         0 0 12px rgba(255, 226, 142, 0.9),
         0 0 30px rgba(255, 174, 0, 0.6),
@@ -689,7 +692,9 @@
     }
 
     body.mode-led.theme-red .seg.on:before,
-    body.mode-led.theme-red .colon .dot {
+    body.mode-led.theme-red .colon .dot,
+    body.mode-vfd.theme-red .seg.on:before,
+    body.mode-vfd.theme-red .colon .dot {
       box-shadow:
         0 0 12px rgba(255, 150, 142, 0.9),
         0 0 30px rgba(255, 84, 72, 0.6),
@@ -698,7 +703,9 @@
     }
 
     body.mode-led.theme-green .seg.on:before,
-    body.mode-led.theme-green .colon .dot {
+    body.mode-led.theme-green .colon .dot,
+    body.mode-vfd.theme-green .seg.on:before,
+    body.mode-vfd.theme-green .colon .dot {
       box-shadow:
         0 0 12px rgba(180, 255, 190, 0.9),
         0 0 30px rgba(94, 255, 116, 0.6),
@@ -707,7 +714,9 @@
     }
 
     body.mode-led.theme-ice .seg.on:before,
-    body.mode-led.theme-ice .colon .dot {
+    body.mode-led.theme-ice .colon .dot,
+    body.mode-vfd.theme-ice .seg.on:before,
+    body.mode-vfd.theme-ice .colon .dot {
       box-shadow:
         0 0 12px rgba(200, 250, 255, 0.9),
         0 0 30px rgba(105, 224, 255, 0.6),
@@ -716,7 +725,9 @@
     }
 
     body.mode-led #date-line,
-    body.mode-led #meridiem {
+    body.mode-led #meridiem,
+    body.mode-vfd #date-line,
+    body.mode-vfd #meridiem {
       text-shadow: 0 0 10px rgba(255, 255, 255, 0.28), 0 0 26px currentColor;
     }
 
@@ -924,7 +935,7 @@
         <span class="option-button" data-theme="green" data-i18n="green">Green</span>
         <span class="option-button" data-theme="ice" data-i18n="ice">Ice</span>
       </div>
-      <div class="settings-hint" data-i18n="themeHint">Colour applies to LED, LCD backlight and Flat. Nixie and VFD keep their own tube colours.</div>
+      <div class="settings-hint" data-i18n="themeHint">Colour applies to LED, VFD, the LCD backlight and Flat. Nixie tubes keep their own neon orange.</div>
     </div>
 
     <div class="settings-row">
@@ -1053,7 +1064,7 @@
           lcd: "LCD",
           flat: "Flat",
           theme: "Colour",
-          themeHint: "Colour applies to LED, LCD backlight and Flat. Nixie and VFD keep their own tube colours.",
+          themeHint: "Colour applies to LED, VFD, the LCD backlight and Flat. Nixie tubes keep their own neon orange.",
           amber: "Amber",
           red: "Red",
           green: "Green",
@@ -1098,7 +1109,7 @@
           lcd: "ЖК",
           flat: "Плоский",
           theme: "Цвет",
-          themeHint: "Цвет действует на светодиоды, подсветку ЖК и плоский стиль. У ламп и люминесцентного индикатора свой цвет.",
+          themeHint: "Цвет действует на светодиоды, люминесцентный индикатор, подсветку ЖК и плоский стиль. У газоразрядных ламп свой оранжевый неон.",
           amber: "Янтарь",
           red: "Красный",
           green: "Зеленый",
@@ -1426,7 +1437,7 @@
 
       /* Horizontal filament wires of a VFD tube, spaced with the digit height. */
       function filamentCss(spacing) {
-        var line = "rgba(170, 250, 255, 0.06)";
+        var line = "rgba(255, 255, 255, 0.05)";
         var stops = line + " 0, " + line + " 1px, transparent 1px, transparent " + px(spacing);
 
         return ".filaments{" +
