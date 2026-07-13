@@ -905,7 +905,20 @@
     }
 
     .settings-row {
-      margin-bottom: 7px;
+      margin-bottom: 5px;
+    }
+
+    .settings-line {
+      display: -webkit-flex;
+      display: flex;
+      margin: 0 -4px 5px;
+    }
+
+    .settings-line .settings-row {
+      -webkit-flex: 1 1 0;
+      flex: 1 1 0;
+      min-width: 0;
+      margin: 0 4px;
     }
 
     .settings-label {
@@ -922,8 +935,8 @@
 
     .option-button {
       display: inline-block;
-      margin: 0 6px 6px 0;
-      padding: 7px 9px;
+      margin: 0 4px 4px 0;
+      padding: 6px 8px;
       border: 1px solid rgba(255, 255, 255, 0.12);
       border-radius: 9px;
       background: rgba(255, 255, 255, 0.04);
@@ -941,10 +954,49 @@
     }
 
     .settings-hint {
-      margin-top: 4px;
+      margin-top: 2px;
       font-size: 10px;
-      line-height: 1.5;
+      line-height: 1.35;
       color: rgba(255, 255, 255, 0.42);
+    }
+
+    .dim-controls {
+      display: -webkit-flex;
+      display: flex;
+      -webkit-align-items: center;
+      align-items: center;
+    }
+
+    .dim-controls .settings-options {
+      -webkit-flex: 0 0 auto;
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
+
+    .dim-range-wrap {
+      display: -webkit-flex;
+      display: flex;
+      -webkit-align-items: center;
+      align-items: center;
+      -webkit-flex: 1 1 auto;
+      flex: 1 1 auto;
+      min-width: 90px;
+      margin: 0 0 4px 5px;
+    }
+
+    #dim-range {
+      -webkit-flex: 1 1 auto;
+      flex: 1 1 auto;
+      min-width: 55px;
+      margin: 0 7px 0 0;
+      accent-color: #fff;
+    }
+
+    #dim-value {
+      width: 34px;
+      color: rgba(255, 255, 255, 0.72);
+      font-size: 11px;
+      text-align: right;
     }
 
     #status {
@@ -998,14 +1050,6 @@
     <div class="settings-title" data-i18n="settingsTitle">Clock Settings</div>
 
     <div class="settings-row">
-      <div class="settings-label" data-i18n="language">Language</div>
-      <div class="settings-options" id="language-options">
-        <span class="option-button" data-language="en" data-i18n="english">English</span>
-        <span class="option-button" data-language="ru" data-i18n="russian">Russian</span>
-      </div>
-    </div>
-
-    <div class="settings-row">
       <div class="settings-label" data-i18n="display">Display</div>
       <div class="settings-options" id="mode-options">
         <span class="option-button" data-mode="led" data-i18n="led">LED</span>
@@ -1024,54 +1068,70 @@
         <span class="option-button" data-theme="green" data-i18n="green">Green</span>
         <span class="option-button" data-theme="ice" data-i18n="ice">Ice</span>
       </div>
-      <div class="settings-hint" data-i18n="themeHint">Colour applies to LED, VFD, the LCD backlight and Flat. Nixie tubes keep their own neon orange.</div>
     </div>
 
-    <div class="settings-row">
-      <div class="settings-label" data-i18n="format">Format</div>
-      <div class="settings-options" id="format-options">
-        <span class="option-button" data-format="24" data-i18n="h24">24 h</span>
-        <span class="option-button" data-format="12" data-i18n="h12">12 h</span>
+    <div class="settings-line">
+      <div class="settings-row">
+        <div class="settings-label" data-i18n="language">Language</div>
+        <div class="settings-options" id="language-options">
+          <span class="option-button" data-language="en" data-i18n="english">English</span>
+          <span class="option-button" data-language="ru" data-i18n="russian">Russian</span>
+        </div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-label" data-i18n="format">Format</div>
+        <div class="settings-options" id="format-options">
+          <span class="option-button" data-format="24" data-i18n="h24">24 h</span>
+          <span class="option-button" data-format="12" data-i18n="h12">12 h</span>
+        </div>
       </div>
     </div>
 
-    <div class="settings-row">
-      <div class="settings-label" data-i18n="weight">Weight</div>
-      <div class="settings-options" id="weight-options">
-        <span class="option-button" data-weight="thin" data-i18n="thin">Thin</span>
-        <span class="option-button" data-weight="bold" data-i18n="bold">Bold</span>
+    <div class="settings-line">
+      <div class="settings-row">
+        <div class="settings-label" data-i18n="weight">Weight</div>
+        <div class="settings-options" id="weight-options">
+          <span class="option-button" data-weight="thin" data-i18n="thin">Thin</span>
+          <span class="option-button" data-weight="bold" data-i18n="bold">Bold</span>
+        </div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-label" data-i18n="seconds">Seconds</div>
+        <div class="settings-options" id="seconds-options">
+          <span class="option-button" data-seconds="off" data-i18n="off">Off</span>
+          <span class="option-button" data-seconds="on" data-i18n="on">On</span>
+        </div>
       </div>
     </div>
 
-    <div class="settings-row">
-      <div class="settings-label" data-i18n="seconds">Seconds</div>
-      <div class="settings-options" id="seconds-options">
-        <span class="option-button" data-seconds="off" data-i18n="off">Off</span>
-        <span class="option-button" data-seconds="on" data-i18n="on">On</span>
+    <div class="settings-line">
+      <div class="settings-row">
+        <div class="settings-label" data-i18n="date">Date</div>
+        <div class="settings-options" id="date-options">
+          <span class="option-button" data-date="off" data-i18n="off">Off</span>
+          <span class="option-button" data-date="on" data-i18n="on">On</span>
+        </div>
       </div>
-    </div>
-
-    <div class="settings-row">
-      <div class="settings-label" data-i18n="date">Date</div>
-      <div class="settings-options" id="date-options">
-        <span class="option-button" data-date="off" data-i18n="off">Off</span>
-        <span class="option-button" data-date="on" data-i18n="on">On</span>
-      </div>
-    </div>
-
-    <div class="settings-row">
-      <div class="settings-label" data-i18n="colonBlink">Colon Blink</div>
-      <div class="settings-options" id="blink-options">
-        <span class="option-button" data-blink="on" data-i18n="on">On</span>
-        <span class="option-button" data-blink="off" data-i18n="off">Off</span>
+      <div class="settings-row">
+        <div class="settings-label" data-i18n="colonBlink">Colon Blink</div>
+        <div class="settings-options" id="blink-options">
+          <span class="option-button" data-blink="on" data-i18n="on">On</span>
+          <span class="option-button" data-blink="off" data-i18n="off">Off</span>
+        </div>
       </div>
     </div>
 
     <div class="settings-row">
       <div class="settings-label" data-i18n="nightDim">Night Dim</div>
-      <div class="settings-options" id="dim-options">
-        <span class="option-button" data-dim="auto" data-i18n="auto">Auto</span>
-        <span class="option-button" data-dim="off" data-i18n="off">Off</span>
+      <div class="dim-controls">
+        <div class="settings-options" id="dim-options">
+          <span class="option-button" data-dim="auto" data-i18n="auto">Auto</span>
+          <span class="option-button" data-dim="off" data-i18n="off">Off</span>
+        </div>
+        <label class="dim-range-wrap" for="dim-range">
+          <input id="dim-range" type="range" min="10" max="80" step="5" value="50" aria-label="Night brightness">
+          <span id="dim-value">50%</span>
+        </label>
       </div>
     </div>
 
@@ -1177,6 +1237,7 @@
           date: "Date",
           colonBlink: "Colon Blink",
           nightDim: "Night Dim",
+          nightBrightness: "Night brightness",
           on: "On",
           off: "Off",
           auto: "Auto",
@@ -1222,6 +1283,7 @@
           date: "Дата",
           colonBlink: "Мигание",
           nightDim: "Ночной режим",
+          nightBrightness: "Яркость ночью",
           on: "Вкл",
           off: "Выкл",
           auto: "Авто",
@@ -1251,7 +1313,8 @@
         showSeconds: false,
         showDate: false,
         blink: true,
-        autoDim: true
+        autoDim: true,
+        nightBrightness: 50
       };
 
       /* ---------------------------------------------------------------
@@ -1267,6 +1330,8 @@
       var statusNode = document.getElementById("status");
       var settingsButton = document.getElementById("settings-button");
       var settingsPanel = document.getElementById("settings-panel");
+      var dimRange = document.getElementById("dim-range");
+      var dimValue = document.getElementById("dim-value");
 
       var settings = loadSettings();
       var cells = {};          /* role -> { segments: {a..g}, numerals: [10] , value: string } */
@@ -1383,6 +1448,10 @@
           result.showDate = saved.showDate === true;
           result.blink = saved.blink !== false;
           result.autoDim = saved.autoDim !== false;
+
+          if (typeof saved.nightBrightness === "number" && isFinite(saved.nightBrightness)) {
+            result.nightBrightness = Math.max(10, Math.min(80, Math.round(saved.nightBrightness / 5) * 5));
+          }
         }
 
         return result;
@@ -1665,6 +1734,8 @@
         for (i = 0; i < i18nNodes.length; i++) {
           i18nNodes[i].node.innerHTML = label(i18nNodes[i].key);
         }
+
+        dimRange.setAttribute("aria-label", label("nightBrightness"));
       }
 
       function collectI18nNodes() {
@@ -1763,6 +1834,7 @@
         if (dim !== lastDimState) {
           lastDimState = dim;
           setFlag("dim", dim);
+          clockNode.style.opacity = dim ? settings.nightBrightness / 100 : "";
         }
       }
 
@@ -1887,6 +1959,27 @@
         setOptionActive("date-options", "data-date", settings.showDate ? "on" : "off");
         setOptionActive("blink-options", "data-blink", settings.blink ? "on" : "off");
         setOptionActive("dim-options", "data-dim", settings.autoDim ? "auto" : "off");
+        dimRange.value = settings.nightBrightness;
+        dimRange.disabled = !settings.autoDim;
+        dimValue.innerHTML = settings.nightBrightness + "%";
+      }
+
+      function changeNightBrightness() {
+        var value = parseInt(dimRange.value, 10);
+
+        if (!isFinite(value)) {
+          return;
+        }
+
+        settings.nightBrightness = Math.max(10, Math.min(80, value));
+        dimValue.innerHTML = settings.nightBrightness + "%";
+        lastDimState = null;
+        tick();
+      }
+
+      function saveNightBrightness() {
+        changeNightBrightness();
+        saveSettings();
       }
 
       function toggleSettingsPanel(forceOpen) {
@@ -2062,6 +2155,8 @@
       setInterval(driftClock, DRIFT_TICK);
 
       settingsPanel.onclick = handleSettingsClick;
+      dimRange.oninput = changeNightBrightness;
+      dimRange.onchange = saveNightBrightness;
       settingsPanel.ontouchstart = function (event) {
         if (event.stopPropagation) {
           event.stopPropagation();
