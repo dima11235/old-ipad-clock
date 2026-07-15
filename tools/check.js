@@ -289,7 +289,12 @@ function takeShots(browser) {
 
 var what = process.argv[2] || 'all';
 
-puppeteer.launch().then(function (browser) {
+/*
+  headless: 'shell' runs the windowless chrome-headless-shell. Plain launch()
+  defaults to the new headless mode, which is a full Chrome and flashes an empty
+  window on Windows every time this runs; the shell never opens one.
+*/
+puppeteer.launch({ headless: 'shell' }).then(function (browser) {
   var chain = Promise.resolve(0);
 
   if (what === 'all' || what === 'fit') {

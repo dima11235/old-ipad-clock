@@ -54,6 +54,13 @@
       user-select: none;
       -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
       -webkit-text-size-adjust: none;
+      /*
+        The clock uses its own long press to toggle seconds. Once the page is
+        clickable (see cursor: pointer below) iOS treats that same long press as a
+        text selection and raises the grey Copy / Look Up callout over it. Turning
+        the callout off keeps the long press to ourselves.
+      */
+      -webkit-touch-callout: none;
     }
 
     /* display: table centering is the most reliable full-height centering on iOS 9. */
@@ -61,6 +68,18 @@
       display: table;
       text-align: center;
       -webkit-font-smoothing: antialiased;
+      /*
+        A short tap anywhere cycles the colour, which is a click handler on the
+        document. Safari on iOS 9 only synthesises a click on an element it
+        considers clickable - a link, a button, or anything with cursor: pointer -
+        so without this the tap reached the clock and did nothing, and only the
+        long press (built on touch events) worked. The settings button and the
+        option buttons already carried cursor: pointer, which is why they alone
+        responded. Making the whole page clickable fixes the tap on the old iPad
+        and only shows a pointer cursor on the desktop, where the clock is indeed
+        click to recolour.
+      */
+      cursor: pointer;
     }
 
     .stage {
@@ -836,10 +855,11 @@
     body.mode-flat.theme-green { background: #0c100d; color: #8df5a6; }
     body.mode-flat.theme-ice { background: #0c1013; color: #9ad7ff; }
 
-    /* Night dimming touches only the clock, never the background. */
-    body.dim #clock {
-      opacity: 0.5;
-    }
+    /*
+      Night dimming touches only the clock, never the background. The actual
+      opacity is set inline by applyDim() from the Night brightness slider, so
+      there is no fixed value here.
+    */
 
     /* ---------- settings UI ---------- */
 
@@ -1833,7 +1853,6 @@
 
         if (dim !== lastDimState) {
           lastDimState = dim;
-          setFlag("dim", dim);
           clockNode.style.opacity = dim ? settings.nightBrightness / 100 : "";
         }
       }
@@ -1964,6 +1983,13 @@
         dimValue.innerHTML = settings.nightBrightness + "%";
       }
 
+      /*
+        While the slider is being dragged the clock is dimmed to the chosen
+        level right away, whatever the hour, so the setting can be judged in the
+        daytime when the night window is hours off. lastDimState is left untouched
+        so the running tick does not fight the preview, and saveNightBrightness
+        drops it again on release.
+      */
       function changeNightBrightness() {
         var value = parseInt(dimRange.value, 10);
 
@@ -1973,13 +1999,15 @@
 
         settings.nightBrightness = Math.max(10, Math.min(80, value));
         dimValue.innerHTML = settings.nightBrightness + "%";
-        lastDimState = null;
-        tick();
+        clockNode.style.opacity = settings.nightBrightness / 100;
       }
 
       function saveNightBrightness() {
         changeNightBrightness();
         saveSettings();
+        /* Let go of the preview and return to the brightness the current hour calls for. */
+        lastDimState = null;
+        tick();
       }
 
       function toggleSettingsPanel(forceOpen) {

@@ -122,7 +122,8 @@ function main() {
 
   var browser;
 
-  puppeteer.launch({ args: ['--allow-file-access-from-files'] }).then(function (b) {
+  /* headless: 'shell' is the windowless browser; the default new headless mode flashes a window on Windows. */
+  puppeteer.launch({ headless: 'shell', args: ['--allow-file-access-from-files'] }).then(function (b) {
     browser = b;
     return b.newPage();
   }).then(function (page) {
