@@ -167,7 +167,7 @@
       border-radius: 999px;
     }
 
-    /* The bevel only eats the last 7% of a bar, so the pill can stay near full thickness. */
+    /* The pill stays near full thickness; the bevel narrows the bar only past the shoulder. */
     .seg-h:before {
       left: 9%;
       right: 9%;
@@ -182,14 +182,23 @@
       bottom: 5%;
     }
 
+    /*
+      The bevel runs from the shoulder to the tip. The tip itself sits on the edge
+      of the box, so lengthening the bevel pulls the shoulders inwards and sharpens
+      the point without moving the tip: neighbouring segments keep the same gap
+      where they meet at a corner. These lengths are what makes the point acute -
+      the taper has to be longer than the bar is thick, or the end reads as a blunt
+      cut. A horizontal bar is thin and wide, so its taper is a larger share of the
+      length than a vertical one needs.
+    */
     .seg-h i {
-      -webkit-clip-path: polygon(7% 0, 93% 0, 100% 50%, 93% 100%, 7% 100%, 0 50%);
-      clip-path: polygon(7% 0, 93% 0, 100% 50%, 93% 100%, 7% 100%, 0 50%);
+      -webkit-clip-path: polygon(13% 0, 87% 0, 100% 50%, 87% 100%, 13% 100%, 0 50%);
+      clip-path: polygon(13% 0, 87% 0, 100% 50%, 87% 100%, 13% 100%, 0 50%);
     }
 
     .seg-v i {
-      -webkit-clip-path: polygon(0 4%, 50% 0, 100% 4%, 100% 96%, 50% 100%, 0 96%);
-      clip-path: polygon(0 4%, 50% 0, 100% 4%, 100% 96%, 50% 100%, 0 96%);
+      -webkit-clip-path: polygon(0 9%, 50% 0, 100% 9%, 100% 91%, 50% 100%, 0 91%);
+      clip-path: polygon(0 9%, 50% 0, 100% 9%, 100% 91%, 50% 100%, 0 91%);
     }
 
     /* Thin geometry (default). */
