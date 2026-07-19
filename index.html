@@ -887,6 +887,27 @@
       background: #000;
     }
 
+    /*
+      The panel goes with it, in the three modes where it is only scenery. By day
+      the LED plastic, the nixie board and the VFD tube face are what the digits
+      sit on; by night they are a dark grey rectangle floating on a black screen,
+      with a lit top edge from the inset highlight, and they carry nothing. The
+      box-shadow has to go too, or that highlight survives the background.
+
+      LCD is left out on purpose: there the panel is the backlight, it is what
+      makes the dark digits legible, and blacking it out would leave nothing to
+      read. Flat has no panel to begin with.
+
+      The tube envelopes and the filament wires are separate elements inside the
+      cells, not the panel, so they stay - the digits keep sitting in their glass.
+    */
+    body.dim.mode-led .frame,
+    body.dim.mode-nixie .frame,
+    body.dim.mode-vfd .frame {
+      background: none;
+      box-shadow: none;
+    }
+
     /* ---------- settings UI ---------- */
 
     #settings-button {
