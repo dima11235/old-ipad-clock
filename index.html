@@ -1162,6 +1162,8 @@
           <span id="dim-value">50%</span>
         </label>
       </div>
+      <!-- Says whether tonight is decided by the sun or by the clock; filled by refreshSettingsUI(). -->
+      <div class="settings-hint" id="dim-hint"></div>
     </div>
 
     <div class="settings-hint" data-i18n="hint">Tap the clock to change colour. Hold the clock to toggle seconds.</div>
@@ -1267,6 +1269,11 @@
           colonBlink: "Colon Blink",
           nightDim: "Night Dim",
           nightBrightness: "Night brightness",
+          dimBySun: "Follows the sun today: sunset",
+          dimSunrise: "sunrise",
+          dimByClock: "Dims 22:00 to 07:00. Allow location once and it will follow the real sunset instead.",
+          dimPolarDay: "Polar day right now: the sun does not set, so the clock stays bright.",
+          dimPolarNight: "Polar night right now: the sun does not rise, so the clock stays dimmed.",
           on: "On",
           off: "Off",
           auto: "Auto",
@@ -1313,6 +1320,11 @@
           colonBlink: "Мигание",
           nightDim: "Ночной режим",
           nightBrightness: "Яркость ночью",
+          dimBySun: "Сегодня по солнцу: закат",
+          dimSunrise: "восход",
+          dimByClock: "Затемнение с 22:00 до 07:00. Разрешите геолокацию один раз, и часы будут следовать настоящему закату.",
+          dimPolarDay: "Сейчас полярный день: солнце не заходит, часы не затемняются.",
+          dimPolarNight: "Сейчас полярная ночь: солнце не восходит, часы затемнены постоянно.",
           on: "Вкл",
           off: "Выкл",
           auto: "Авто",
@@ -1343,7 +1355,10 @@
         showDate: false,
         blink: true,
         autoDim: true,
-        nightBrightness: 50
+        nightBrightness: 50,
+        /* Filled in once by geolocation; null means the clock falls back to fixed hours. */
+        latitude: null,
+        longitude: null
       };
 
       /* ---------------------------------------------------------------
@@ -1361,6 +1376,7 @@
       var settingsPanel = document.getElementById("settings-panel");
       var dimRange = document.getElementById("dim-range");
       var dimValue = document.getElementById("dim-value");
+      var dimHint = document.getElementById("dim-hint");
 
       var settings = loadSettings();
       var cells = {};          /* role -> { segments: {a..g}, numerals: [10] , value: string } */
@@ -1481,9 +1497,19 @@
           if (typeof saved.nightBrightness === "number" && isFinite(saved.nightBrightness)) {
             result.nightBrightness = Math.max(10, Math.min(80, Math.round(saved.nightBrightness / 5) * 5));
           }
+
+          /* Coordinates are only ever taken as a pair; half of one is worse than none. */
+          if (isCoordinate(saved.latitude, 90) && isCoordinate(saved.longitude, 180)) {
+            result.latitude = saved.latitude;
+            result.longitude = saved.longitude;
+          }
         }
 
         return result;
+      }
+
+      function isCoordinate(value, limit) {
+        return typeof value === "number" && isFinite(value) && value >= -limit && value <= limit;
       }
 
       function saveSettings() {
@@ -1856,9 +1882,132 @@
         dateNode.innerHTML = DAY_NAMES[lang][now.getDay()] + " " + now.getDate() + " " + MONTH_NAMES[lang][now.getMonth()];
       }
 
+      /* ---------------------------------------------------------------
+         Where the night is
+         --------------------------------------------------------------- */
+
+      /*
+        The clock used to dim between fixed hours, 22:00 to 07:00. In summer that
+        is wrong at both ends: at six in the morning the sun is already up and the
+        half lit digits wash out completely against it.
+
+        Reading the actual light would be the honest fix, but no iPad can do it -
+        Safari has never implemented the Ambient Light Sensor on any version of
+        iOS, and the old devicelight event was Firefox only. What can be had for
+        free is the sun itself: its position is pure arithmetic from the date and
+        the coordinates, so with a location the clock knows sunrise and sunset for
+        today without a network, a sensor, or a stored table.
+
+        The algorithm below is the standard low precision solar one (as used by
+        SunCalc): accurate to well under a minute, which is far past what matters
+        for deciding whether to dim a wall clock.
+      */
+      var RAD = Math.PI / 180;
+      var DAY_MS = 86400000;
+      var J1970 = 2440588;
+      var J2000 = 2451545;
+      var OBLIQUITY = RAD * 23.4397;
+      /* Centre of the solar disc sits 0.833 deg below the horizon at sunrise, refraction included. */
+      var SUN_ALTITUDE = RAD * -0.833;
+
+      var sunCache = null;      /* { key: "y-m-d", sunrise: Date, sunset: Date, polar: 0 | 1 | -1 } */
+
+      function toJulian(date) {
+        return date.valueOf() / DAY_MS - 0.5 + J1970;
+      }
+
+      function fromJulian(julian) {
+        return new Date((julian + 0.5 - J1970) * DAY_MS);
+      }
+
+      /*
+        Sunrise and sunset for the calendar day the given moment falls in.
+        Returns polar: 1 when the sun never sets that day and -1 when it never
+        rises, in which case the two times are meaningless and left out.
+      */
+      function sunTimes(date, latitude, longitude) {
+        var lw = RAD * -longitude;
+        var phi = RAD * latitude;
+        var d = toJulian(date) - J2000;
+        var n = Math.round(d - 0.0009 - lw / (2 * Math.PI));
+        var ds = 0.0009 + lw / (2 * Math.PI) + n;
+        var M = RAD * (357.5291 + 0.98560028 * ds);
+        var C = RAD * (1.9148 * Math.sin(M) + 0.02 * Math.sin(2 * M) + 0.0003 * Math.sin(3 * M));
+        var L = M + C + RAD * 102.9372 + Math.PI;
+        var noon = J2000 + ds + 0.0053 * Math.sin(M) - 0.0069 * Math.sin(2 * L);
+        var declination = Math.asin(Math.sin(OBLIQUITY) * Math.sin(L));
+        var cosHourAngle = (Math.sin(SUN_ALTITUDE) - Math.sin(phi) * Math.sin(declination)) /
+          (Math.cos(phi) * Math.cos(declination));
+        var hourAngle;
+        var setJulian;
+
+        /* Above the polar circles the sun can stay up, or stay down, for the whole day. */
+        if (cosHourAngle >= 1) {
+          return { polar: -1 };
+        }
+
+        if (cosHourAngle <= -1) {
+          return { polar: 1 };
+        }
+
+        hourAngle = Math.acos(cosHourAngle);
+        ds = 0.0009 + (hourAngle + lw) / (2 * Math.PI) + n;
+        setJulian = J2000 + ds + 0.0053 * Math.sin(M) - 0.0069 * Math.sin(2 * L);
+
+        return {
+          polar: 0,
+          sunset: fromJulian(setJulian),
+          sunrise: fromJulian(noon - (setJulian - noon))
+        };
+      }
+
+      /*
+        The sun moves slowly enough that today's times are worth keeping until the
+        date rolls over; applyDim runs five times a second.
+      */
+      function sunToday(now) {
+        var key;
+
+        if (!hasLocation()) {
+          return null;
+        }
+
+        key = now.getFullYear() + "-" + now.getMonth() + "-" + now.getDate();
+
+        if (!sunCache || sunCache.key !== key) {
+          sunCache = sunTimes(now, settings.latitude, settings.longitude);
+          sunCache.key = key;
+        }
+
+        return sunCache;
+      }
+
+      function hasLocation() {
+        return typeof settings.latitude === "number" && typeof settings.longitude === "number";
+      }
+
+      /*
+        Night is everything outside today's sunrise to sunset. Without coordinates
+        there is nothing to compute from, so the old fixed window stands in.
+      */
+      function isNight(now) {
+        var sun = sunToday(now);
+        var hour;
+
+        if (!sun) {
+          hour = now.getHours();
+          return hour >= 22 || hour < 7;
+        }
+
+        if (sun.polar) {
+          return sun.polar < 0;
+        }
+
+        return now < sun.sunrise || now >= sun.sunset;
+      }
+
       function applyDim(now) {
-        var hour = now.getHours();
-        var dim = settings.autoDim && (hour >= 22 || hour < 7);
+        var dim = settings.autoDim && isNight(now);
 
         if (dim !== lastDimState) {
           lastDimState = dim;
@@ -1990,6 +2139,27 @@
         dimRange.value = settings.nightBrightness;
         dimRange.disabled = !settings.autoDim;
         dimValue.innerHTML = settings.nightBrightness + "%";
+        dimHint.innerHTML = dimHintText(new Date());
+      }
+
+      /* Spells out what decides tonight, so the setting can be trusted without waiting for dusk. */
+      function dimHintText(now) {
+        var sun = sunToday(now);
+
+        if (!sun) {
+          return label("dimByClock");
+        }
+
+        if (sun.polar) {
+          return label(sun.polar > 0 ? "dimPolarDay" : "dimPolarNight");
+        }
+
+        return label("dimBySun") + " " + clockTime(sun.sunset) + ", " +
+          label("dimSunrise") + " " + clockTime(sun.sunrise) + ".";
+      }
+
+      function clockTime(date) {
+        return pad(date.getHours()) + ":" + pad(date.getMinutes());
       }
 
       /*
@@ -2020,7 +2190,14 @@
       }
 
       function toggleSettingsPanel(forceOpen) {
-        setFlag("settings-open", typeof forceOpen === "boolean" ? forceOpen : !hasClass("settings-open"));
+        var open = typeof forceOpen === "boolean" ? forceOpen : !hasClass("settings-open");
+
+        /* Sunset and sunrise move every day, so the hint is rebuilt each time the panel is shown. */
+        if (open) {
+          refreshSettingsUI();
+        }
+
+        setFlag("settings-open", open);
       }
 
       /*
@@ -2161,6 +2338,41 @@
         }
       }
 
+      /*
+        Asked for once, then remembered forever: a wall clock does not travel, and
+        the coordinates only ever feed sunrise and sunset. If the prompt is refused
+        or the fix times out the clock quietly keeps the fixed 22:00 to 07:00
+        window, so nothing depends on the answer. Geolocation needs https, which
+        the published page has; opened as a local file it simply does nothing.
+      */
+      function requestLocation() {
+        if (!navigator.geolocation || hasLocation()) {
+          return;
+        }
+
+        try {
+          navigator.geolocation.getCurrentPosition(function (position) {
+            if (!position || !position.coords) {
+              return;
+            }
+
+            settings.latitude = position.coords.latitude;
+            settings.longitude = position.coords.longitude;
+            saveSettings();
+
+            /* Recompute tonight from the sun instead of the clock, right away. */
+            sunCache = null;
+            lastDimState = null;
+            refreshSettingsUI();
+            tick();
+          }, function () {
+            /* Refused or unavailable: the fixed window stays in charge. */
+          }, { enableHighAccuracy: false, timeout: 20000, maximumAge: 86400000 });
+        } catch (error) {
+          /* Old Safari can throw here outright; same fallback. */
+        }
+      }
+
       function requestWakeLock() {
         if (!navigator.wakeLock || wakeLock) {
           return;
@@ -2187,6 +2399,7 @@
       applyAll();          /* applyMetrics() inside it also places the clock on its drift path */
       setupOffline();
       requestWakeLock();
+      requestLocation();
 
       setInterval(tick, 200);
       setInterval(driftClock, DRIFT_TICK);
