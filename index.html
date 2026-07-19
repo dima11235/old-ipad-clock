@@ -870,20 +870,10 @@
     body.mode-flat.theme-ice { color: #9ad7ff; }
 
     /*
-      Night dimming sets its level inline on #clock, from the Night brightness
-      slider, so no fixed value appears here.
-
-      The one thing it does change is the VFD tube. Its smoked glass is a lit
-      rectangle in its own right - a pale wash across the whole panel, plus an
-      inset glow around the edges - and unlike the digits it carries nothing. In a
-      dark room it is the brightest thing on the screen after the segments, so at
-      night the glass goes and the phosphor is left glowing on black. Every other
-      mode keeps its panel exactly as it is by day.
+      Night dimming touches only the clock, never the background. The level is set
+      inline on #clock by applyDim() from the Night brightness slider, so there is
+      no fixed value here, and every mode looks by night exactly as it does by day.
     */
-    body.dim.mode-vfd .frame {
-      background: none;
-      box-shadow: none;
-    }
 
     /* ---------- settings UI ---------- */
 
@@ -2037,8 +2027,6 @@
 
         if (dim !== lastDimState) {
           lastDimState = dim;
-          /* The class is only read by the VFD rule that drops the smoked glass. */
-          setFlag("dim", dim);
           clockNode.style.opacity = dim ? settings.nightBrightness / 100 : "";
         }
       }
