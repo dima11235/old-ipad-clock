@@ -865,10 +865,27 @@
     body.mode-flat.theme-ice { background: #0c1013; color: #9ad7ff; }
 
     /*
-      Night dimming touches only the clock, never the background. The actual
-      opacity is set inline by applyDim() from the Night brightness slider, so
-      there is no fixed value here.
+      Night dimming has two parts. The level is set inline on #clock by
+      applyDim() from the Night brightness slider, so no fixed value appears here.
+      The other part is this: at night the page goes properly black.
+
+      By day the background is deliberately not black. It is lifted a little and
+      tinted towards the theme - #050505 normally, #0d0a06 under an LCD, and
+      #101010 in flat mode, which has no panel of its own - so that a mode reads
+      as a device standing in a room rather than a shape floating in a void. In a
+      dark room that same lift is just a grey rectangle the size of the screen,
+      and it is lit all night, so at night it goes to #000 and only the display
+      itself emits anything.
+
+      The extra selectors are there for specificity: plain body.dim would lose to
+      body.mode-lcd.theme-amber and body.mode-flat.theme-amber, so those two cases
+      are matched at equal weight and win on order instead.
     */
+    body.dim,
+    body.dim.mode-lcd,
+    body.dim.mode-flat {
+      background: #000;
+    }
 
     /* ---------- settings UI ---------- */
 
@@ -2022,6 +2039,8 @@
 
         if (dim !== lastDimState) {
           lastDimState = dim;
+          /* The class takes the page background to black; the opacity dims the clock. */
+          setFlag("dim", dim);
           clockNode.style.opacity = dim ? settings.nightBrightness / 100 : "";
         }
       }
