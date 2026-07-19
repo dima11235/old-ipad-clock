@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-title" content="Clock">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="format-detection" content="telephone=no">
-  <meta name="theme-color" content="#050505">
+  <meta name="theme-color" content="#000000">
   <title>Retro Clock</title>
   <!--
     Home screen icon. Without these links iOS screenshots the page and uses that
@@ -47,7 +47,15 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background: #050505;
+      /*
+        Pure black, always, in every mode and theme. It used to be lifted a little
+        and tinted per mode - #050505 normally, #0d0a06 under an LCD, #101010 in
+        flat mode - on the idea that a hint of light around the panel reads like a
+        real device standing in a room. On a screen that is on all night in a dark
+        room it reads as a grey rectangle instead, so the lift is gone and only
+        the display itself emits anything.
+      */
+      background: #000;
       color: #ffb648;
       font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
       -webkit-user-select: none;
@@ -753,11 +761,13 @@
       A theme sets the body colour, which the segments pick up through
       currentColor, and the glow rings for LED mode. VFD and nixie keep their own
       authentic phosphor/neon colours; for LCD the theme picks the backlight.
+
+      The page behind it all stays pure black - see the note on the body rule.
     */
-    body.theme-amber { background: #050505; color: #ffb648; }
-    body.theme-red { background: #050404; color: #ff6b5e; }
-    body.theme-green { background: #040705; color: #7dff97; }
-    body.theme-ice { background: #04070a; color: #96ecff; }
+    body.theme-amber { color: #ffb648; }
+    body.theme-red { color: #ff6b5e; }
+    body.theme-green { color: #7dff97; }
+    body.theme-ice { color: #96ecff; }
 
     /*
       LED and VFD share the halo of a given colour. What separates them is the
@@ -853,84 +863,26 @@
     body.mode-lcd.theme-green .frame { background: linear-gradient(180deg, #cbe485, #a8ca55 55%, #93b944); }
     body.mode-lcd.theme-ice .frame { background: linear-gradient(180deg, #b7e6f7, #86c9e6 55%, #6fb8d9); }
 
-    body.mode-lcd.theme-amber { background: #0d0a06; }
-    body.mode-lcd.theme-red { background: #0d0706; }
-    body.mode-lcd.theme-green { background: #090c06; }
-    body.mode-lcd.theme-ice { background: #060b0d; }
-
-    /* Flat mode softens the background a little; there is no panel to look at. */
-    body.mode-flat.theme-amber { background: #101010; color: #ffd166; }
-    body.mode-flat.theme-red { background: #120d0d; color: #ff7b72; }
-    body.mode-flat.theme-green { background: #0c100d; color: #8df5a6; }
-    body.mode-flat.theme-ice { background: #0c1013; color: #9ad7ff; }
+    /* Flat mode only changes the digit colour; the page behind it stays black. */
+    body.mode-flat.theme-amber { color: #ffd166; }
+    body.mode-flat.theme-red { color: #ff7b72; }
+    body.mode-flat.theme-green { color: #8df5a6; }
+    body.mode-flat.theme-ice { color: #9ad7ff; }
 
     /*
-      ---------- night ----------
+      Night dimming sets its level inline on #clock, from the Night brightness
+      slider, so no fixed value appears here.
 
-      Night dimming has two halves. The overall level is set inline on #clock by
-      applyDim() from the Night brightness slider, so no fixed value appears here.
-      What follows is the other half: switching off everything that emulates a
-      physical display but emits no information.
-
-      By daylight the panel, the smoked glass, the tube envelope and the LCD
-      backlight are what make each mode look like real hardware. In a dark room
-      they are just a lit rectangle - and the backlight in particular is the
-      brightest thing on the screen by a wide margin, far brighter than the digits
-      it exists to reveal. At night all of it goes, leaving the lit segments alone
-      on black.
-
-      These rules sit after the mode and theme blocks on purpose: several of them
-      have to outrank selectors like body.mode-lcd.theme-amber .frame, so they
-      match its specificity and win on order.
+      The one thing it does change is the VFD tube. Its smoked glass is a lit
+      rectangle in its own right - a pale wash across the whole panel, plus an
+      inset glow around the edges - and unlike the digits it carries nothing. In a
+      dark room it is the brightest thing on the screen after the segments, so at
+      night the glass goes and the phosphor is left glowing on black. Every other
+      mode keeps its panel exactly as it is by day.
     */
-    body.dim,
-    body.dim.mode-lcd,
-    body.dim.mode-flat {
-      background: #000;
-    }
-
-    /* The panel itself: LED plastic, VFD glass, nixie board, and the LCD backlight. */
-    body.dim .frame,
-    body.dim.mode-lcd .frame {
+    body.dim.mode-vfd .frame {
       background: none;
       box-shadow: none;
-    }
-
-    /* Overlays that only exist to sell the hardware. */
-    body.dim .lcd-glass,
-    body.dim .filaments,
-    body.dim .glass {
-      display: none;
-    }
-
-    /*
-      Unlit segments. Clearing the background is enough for all three kinds - the
-      LED's faint grey, the VFD's glowing phosphor and the LCD's ghost - and it
-      avoids touching opacity, which on a lit LED segment would hide the digit.
-    */
-    body.dim .seg i {
-      background: transparent;
-    }
-
-    /* Unlit nixie cathodes, the wire ghosts behind the lit numeral. */
-    body.dim .num {
-      color: transparent;
-      -webkit-text-stroke-color: transparent;
-    }
-
-    /*
-      An LCD is the one mode that reads dark on light, so blacking out its
-      backlight would take the digits with it. At night it inverts instead: the
-      segments light up in the theme colour and the panel behind them is gone.
-    */
-    body.dim.mode-lcd .seg.on i,
-    body.dim.mode-lcd .colon .dot {
-      background: currentColor;
-    }
-
-    body.dim.mode-lcd #date-line,
-    body.dim.mode-lcd #meridiem {
-      color: currentColor;
     }
 
     /* ---------- settings UI ---------- */
@@ -2085,7 +2037,7 @@
 
         if (dim !== lastDimState) {
           lastDimState = dim;
-          /* The class strips the panels and backlights; the opacity sets the level. */
+          /* The class is only read by the VFD rule that drops the smoked glass. */
           setFlag("dim", dim);
           clockNode.style.opacity = dim ? settings.nightBrightness / 100 : "";
         }
@@ -2258,8 +2210,6 @@
 
         settings.nightBrightness = Math.max(10, Math.min(80, value));
         dimValue.innerHTML = settings.nightBrightness + "%";
-        /* Preview the night as it really looks: blacked out panel, not just a level. */
-        setFlag("dim", true);
         clockNode.style.opacity = settings.nightBrightness / 100;
       }
 
