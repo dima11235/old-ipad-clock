@@ -2197,11 +2197,13 @@
       }
 
       /*
-        While the slider is being dragged the clock is dimmed to the chosen
-        level right away, whatever the hour, so the setting can be judged in the
-        daytime when the night window is hours off. lastDimState is left untouched
-        so the running tick does not fight the preview, and saveNightBrightness
-        drops it again on release.
+        While the slider is being dragged the clock shows the whole of night, not
+        just its level: the chosen opacity and the black background together,
+        whatever the hour. Judging the setting in the afternoon is otherwise
+        guesswork, and the background is half of what makes a night look right.
+
+        lastDimState is deliberately left alone so the running tick does not fight
+        the preview, and saveNightBrightness drops it again on release.
       */
       function changeNightBrightness() {
         var value = parseInt(dimRange.value, 10);
@@ -2212,6 +2214,7 @@
 
         settings.nightBrightness = Math.max(10, Math.min(80, value));
         dimValue.innerHTML = settings.nightBrightness + "%";
+        setFlag("dim", true);
         clockNode.style.opacity = settings.nightBrightness / 100;
       }
 
