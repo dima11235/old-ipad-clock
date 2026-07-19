@@ -1269,11 +1269,10 @@
           colonBlink: "Colon Blink",
           nightDim: "Night Dim",
           nightBrightness: "Night brightness",
-          dimBySun: "Follows the sun today: sunset",
-          dimSunrise: "sunrise",
-          dimByClock: "Dims 22:00 to 07:00. Allow location once and it will follow the real sunset instead.",
-          dimPolarDay: "Polar day right now: the sun does not set, so the clock stays bright.",
-          dimPolarNight: "Polar night right now: the sun does not rise, so the clock stays dimmed.",
+          dimWindow: "Dims from",
+          dimUntil: "until",
+          dimAtSunrise: "(sunrise)",
+          dimNoLocation: "Allow location once and the morning end will follow the real sunrise.",
           on: "On",
           off: "Off",
           auto: "Auto",
@@ -1320,11 +1319,10 @@
           colonBlink: "Мигание",
           nightDim: "Ночной режим",
           nightBrightness: "Яркость ночью",
-          dimBySun: "Сегодня по солнцу: закат",
-          dimSunrise: "восход",
-          dimByClock: "Затемнение с 22:00 до 07:00. Разрешите геолокацию один раз, и часы будут следовать настоящему закату.",
-          dimPolarDay: "Сейчас полярный день: солнце не заходит, часы не затемняются.",
-          dimPolarNight: "Сейчас полярная ночь: солнце не восходит, часы затемнены постоянно.",
+          dimWindow: "Затемнение с",
+          dimUntil: "до",
+          dimAtSunrise: "(восход)",
+          dimNoLocation: "Разрешите геолокацию один раз, и утреннее выключение будет следовать настоящему восходу.",
           on: "Вкл",
           off: "Выкл",
           auto: "Авто",
@@ -1887,21 +1885,33 @@
          --------------------------------------------------------------- */
 
       /*
-        The clock used to dim between fixed hours, 22:00 to 07:00. In summer that
-        is wrong at both ends: at six in the morning the sun is already up and the
-        half lit digits wash out completely against it.
+        The two ends of the night are not symmetric, so they are decided
+        differently.
+
+        Evening is fixed at 23:00. Dusk is not the moment a room goes dark - the
+        lights are on long before the sun is down, and following sunset would dim
+        the clock at nine in the summer while the room is still lit. What the
+        evening actually tracks is bedtime, and that is a clock time.
+
+        Morning is whichever comes first, sunrise or 07:00. Sunrise is the end
+        that matters in summer: at six the sun is already up, and digits lit at
+        half strength wash out completely against it, which is the bug this
+        replaced. In winter sunrise is far too late to wait for - it is past nine
+        in December - so 07:00 caps it and the clock is at full strength for the
+        morning either way.
 
         Reading the actual light would be the honest fix, but no iPad can do it -
         Safari has never implemented the Ambient Light Sensor on any version of
-        iOS, and the old devicelight event was Firefox only. What can be had for
-        free is the sun itself: its position is pure arithmetic from the date and
-        the coordinates, so with a location the clock knows sunrise and sunset for
-        today without a network, a sensor, or a stored table.
+        iOS, and the old devicelight event was Firefox only. The sun, though, is
+        pure arithmetic from the date and the coordinates, so with a location the
+        clock knows today's sunrise without a network, a sensor, or a stored table.
 
         The algorithm below is the standard low precision solar one (as used by
         SunCalc): accurate to well under a minute, which is far past what matters
         for deciding whether to dim a wall clock.
       */
+      var DIM_START_HOUR = 23;      /* evening is a clock time, not a solar one */
+      var DIM_MORNING_LIMIT = 7;    /* the latest the clock will stay dimmed, whatever the sun does */
       var RAD = Math.PI / 180;
       var DAY_MS = 86400000;
       var J1970 = 2440588;
@@ -1987,23 +1997,24 @@
       }
 
       /*
-        Night is everything outside today's sunrise to sunset. Without coordinates
-        there is nothing to compute from, so the old fixed window stands in.
+        When the dimming lifts in the morning: sunrise, or DIM_MORNING_LIMIT if
+        sunrise is later than that. Without coordinates, and on the polar days
+        where the sun never crosses the horizon at all, there is no sunrise to
+        use and the limit is the whole answer.
       */
-      function isNight(now) {
+      function morningEnd(now) {
+        var limit = new Date(now.getFullYear(), now.getMonth(), now.getDate(), DIM_MORNING_LIMIT, 0, 0, 0);
         var sun = sunToday(now);
-        var hour;
 
-        if (!sun) {
-          hour = now.getHours();
-          return hour >= 22 || hour < 7;
+        if (sun && !sun.polar && sun.sunrise < limit) {
+          return sun.sunrise;
         }
 
-        if (sun.polar) {
-          return sun.polar < 0;
-        }
+        return limit;
+      }
 
-        return now < sun.sunrise || now >= sun.sunset;
+      function isNight(now) {
+        return now.getHours() >= DIM_START_HOUR || now < morningEnd(now);
       }
 
       function applyDim(now) {
@@ -2142,20 +2153,24 @@
         dimHint.innerHTML = dimHintText(new Date());
       }
 
-      /* Spells out what decides tonight, so the setting can be trusted without waiting for dusk. */
+      /* Spells out tonight's actual window, so the setting can be trusted without waiting for dusk. */
       function dimHintText(now) {
-        var sun = sunToday(now);
+        var end = morningEnd(now);
+        var text = label("dimWindow") + " " + pad(DIM_START_HOUR) + ":00 " +
+          label("dimUntil") + " " + clockTime(end);
 
-        if (!sun) {
-          return label("dimByClock");
+        /* Say so when the sun, not the cap, is what lifts it. */
+        if (end.getHours() !== DIM_MORNING_LIMIT || end.getMinutes() !== 0) {
+          text += " " + label("dimAtSunrise");
         }
 
-        if (sun.polar) {
-          return label(sun.polar > 0 ? "dimPolarDay" : "dimPolarNight");
+        text += ".";
+
+        if (!hasLocation()) {
+          text += " " + label("dimNoLocation");
         }
 
-        return label("dimBySun") + " " + clockTime(sun.sunset) + ", " +
-          label("dimSunrise") + " " + clockTime(sun.sunrise) + ".";
+        return text;
       }
 
       function clockTime(date) {
@@ -2340,9 +2355,10 @@
 
       /*
         Asked for once, then remembered forever: a wall clock does not travel, and
-        the coordinates only ever feed sunrise and sunset. If the prompt is refused
-        or the fix times out the clock quietly keeps the fixed 22:00 to 07:00
-        window, so nothing depends on the answer. Geolocation needs https, which
+        the coordinates only ever feed the morning end of the night. If the prompt
+        is refused or the fix times out, that end falls back to DIM_MORNING_LIMIT
+        and the window is simply 23:00 to 07:00, so nothing depends on the answer.
+        Geolocation needs https, which
         the published page has; opened as a local file it simply does nothing.
       */
       function requestLocation() {
