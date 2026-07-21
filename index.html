@@ -1277,6 +1277,8 @@
 
       var HOLD_SLOP = 12;            /* px a finger may drift and still count as a hold, not a swipe */
       var HOLD_CLICK_WINDOW = 1200;  /* ms a long press may suppress the click that follows it */
+      var TICK_MS = 200;
+      var TICK_GAP = 5000;           /* a gap this long means the page was frozen, not merely late */
 
       var DAY_NAMES = {
         en: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
@@ -1437,6 +1439,9 @@
       var resizeTimer = null;
       var lastDateKey = "";
       var lastDimState = null;
+      var lastTickAt = 0;
+      var tickTimer = null;
+      var driftTimer = null;
       var lastViewport = "";
       var wakeLock = null;
 
@@ -2068,15 +2073,29 @@
         return now.getHours() >= DIM_START_HOUR || now < morningEnd(now);
       }
 
+      /*
+        The cached lastDimState is an optimisation, not the truth: what counts is
+        what the page is actually showing. So the check is against the DOM as well
+        as the cache, and any disagreement is corrected on the next tick.
+
+        The difference matters because the state can be written from outside this
+        function - the brightness slider previews the night while it is being
+        dragged - and because a night that failed to apply once would otherwise
+        stay wrong until something else happened to reset the cache. Comparing
+        what is on screen makes the wrong state impossible to sit in.
+      */
       function applyDim(now) {
         var dim = settings.autoDim && isNight(now);
+        var opacity = dim ? String(settings.nightBrightness / 100) : "";
 
-        if (dim !== lastDimState) {
-          lastDimState = dim;
-          /* The class takes the page background to black; the opacity dims the clock. */
-          setFlag("dim", dim);
-          clockNode.style.opacity = dim ? settings.nightBrightness / 100 : "";
+        if (dim === lastDimState && clockNode.style.opacity === opacity && hasClass("dim") === dim) {
+          return;
         }
+
+        lastDimState = dim;
+        /* The class takes the page background to black; the opacity dims the clock. */
+        setFlag("dim", dim);
+        clockNode.style.opacity = opacity;
       }
 
       function drawColon(now) {
@@ -2088,8 +2107,25 @@
         }
       }
 
+      /*
+        A tick that arrives far later than it was due means the page was not
+        running: Android freezes and throttles pages whose screen is off or whose
+        tab is in the background, and a tablet left on a shelf overnight is
+        exactly that case. Everything cached across ticks is therefore thrown away
+        after a gap, because all of it may describe a different day - the date
+        line, the dim state and the sun times most of all.
+      */
       function tick() {
         var now = new Date();
+        var stamp = now.getTime();
+
+        if (lastTickAt && Math.abs(stamp - lastTickAt) > TICK_GAP) {
+          lastDateKey = "";
+          lastDimState = null;
+          sunCache = null;
+        }
+
+        lastTickAt = stamp;
 
         drawTime(now);
         drawColon(now);
@@ -2528,6 +2564,38 @@
         }
       }
 
+      /*
+        Both timers are re-armed rather than merely relied upon. An interval that
+        a phone or tablet suspended overnight does not always come back when the
+        page does, and when it does not, the clock keeps showing whatever it drew
+        last - which is how a night that should have dimmed at 23:00 was still
+        undimmed at half past one, with reloading the page the only way out.
+
+        Restarting an interval that is in fact alive costs nothing, so this runs
+        on every signal that the page is being looked at again, and each one ticks
+        immediately afterwards so the correction is visible at once rather than up
+        to a fifth of a second later.
+      */
+      function startTimers() {
+        if (tickTimer) {
+          clearInterval(tickTimer);
+        }
+
+        if (driftTimer) {
+          clearInterval(driftTimer);
+        }
+
+        tickTimer = setInterval(tick, TICK_MS);
+        driftTimer = setInterval(driftClock, DRIFT_TICK);
+      }
+
+      function resume() {
+        startTimers();
+        requestWakeLock();
+        applyMetrics();
+        tick();
+      }
+
       /* ---------------------------------------------------------------
          Start
          --------------------------------------------------------------- */
@@ -2539,8 +2607,7 @@
       requestWakeLock();
       requestLocation();
 
-      setInterval(tick, 200);
-      setInterval(driftClock, DRIFT_TICK);
+      startTimers();
 
       settingsPanel.onclick = handleSettingsClick;
       dimRange.oninput = changeNightBrightness;
@@ -2567,13 +2634,24 @@
       window.addEventListener("resize", handleResize, false);
       window.addEventListener("orientationchange", handleResize, false);
 
+      /*
+        Every way a page can come back to life, because no single one of them is
+        reliable across these devices: visibilitychange is not sent when a screen
+        wakes without the tab ever having been marked hidden, pageshow is what
+        fires when the page is restored from the back/forward cache, and focus
+        covers a window handed back by the system. A touch is the last resort -
+        if all of them were missed, walking up and touching the clock puts it
+        right, which beats reloading it.
+      */
       document.addEventListener("visibilitychange", function () {
         if (!document.hidden) {
-          requestWakeLock();
-          applyMetrics();
-          tick();
+          resume();
         }
       }, false);
+
+      window.addEventListener("pageshow", resume, false);
+      window.addEventListener("focus", resume, false);
+      document.addEventListener("touchstart", tick, listenerOptions());
     })();
   </script>
 </body>
