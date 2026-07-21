@@ -1442,6 +1442,7 @@
       var lastTickAt = 0;
       var tickTimer = null;
       var driftTimer = null;
+      var dimPreview = false;   /* the slider is holding the clock in the night on purpose */
       var lastViewport = "";
       var wakeLock = null;
 
@@ -2085,8 +2086,16 @@
         what is on screen makes the wrong state impossible to sit in.
       */
       function applyDim(now) {
-        var dim = settings.autoDim && isNight(now);
-        var opacity = dim ? String(settings.nightBrightness / 100) : "";
+        var dim;
+        var opacity;
+
+        /* The slider is showing the night on purpose; the hour does not get a say. */
+        if (dimPreview) {
+          return;
+        }
+
+        dim = settings.autoDim && isNight(now);
+        opacity = dim ? String(settings.nightBrightness / 100) : "";
 
         if (dim === lastDimState && clockNode.style.opacity === opacity && hasClass("dim") === dim) {
           return;
@@ -2267,13 +2276,16 @@
       }
 
       /*
-        While the slider is being dragged the clock shows the whole of night, not
-        just its level: the chosen opacity and the black background together,
-        whatever the hour. Judging the setting in the afternoon is otherwise
-        guesswork, and the background is half of what makes a night look right.
+        Touching the slider puts the clock into the night for as long as the
+        settings panel stays open: the chosen level and the black background
+        together, whatever the hour actually is. Judging the setting in the
+        afternoon is otherwise guesswork, and the background is half of what makes
+        a night look right.
 
-        lastDimState is deliberately left alone so the running tick does not fight
-        the preview, and saveNightBrightness drops it again on release.
+        The preview has to be a state of its own rather than just a pair of writes,
+        because applyDim() checks the screen against what the hour calls for and
+        would correct it back within one tick - which is a fifth of a second, long
+        enough to see a flash and far too short to judge anything by.
       */
       function changeNightBrightness() {
         var value = parseInt(dimRange.value, 10);
@@ -2284,6 +2296,7 @@
 
         settings.nightBrightness = Math.max(10, Math.min(80, value));
         dimValue.innerHTML = settings.nightBrightness + "%";
+        dimPreview = true;
         setFlag("dim", true);
         clockNode.style.opacity = settings.nightBrightness / 100;
       }
@@ -2291,7 +2304,15 @@
       function saveNightBrightness() {
         changeNightBrightness();
         saveSettings();
-        /* Let go of the preview and return to the brightness the current hour calls for. */
+      }
+
+      /* Hand the clock back to the hour it is really in. */
+      function endDimPreview() {
+        if (!dimPreview) {
+          return;
+        }
+
+        dimPreview = false;
         lastDimState = null;
         tick();
       }
@@ -2302,6 +2323,9 @@
         /* Sunset and sunrise move every day, so the hint is rebuilt each time the panel is shown. */
         if (open) {
           refreshSettingsUI();
+        } else {
+          /* Closing the panel is what ends a night preview. */
+          endDimPreview();
         }
 
         setFlag("settings-open", open);
@@ -2593,6 +2617,8 @@
         startTimers();
         requestWakeLock();
         applyMetrics();
+        /* A preview left open when the page went to sleep is not worth restoring. */
+        dimPreview = false;
         tick();
       }
 
