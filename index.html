@@ -61,6 +61,13 @@
         the callout off keeps the long press to ourselves.
       */
       -webkit-touch-callout: none;
+      /*
+        No double tap zoom, so a browser never has to wait to see whether a second
+        tap is coming before it delivers the first one. On Android that wait is
+        what makes a tap feel like it was ignored.
+      */
+      -ms-touch-action: manipulation;
+      touch-action: manipulation;
     }
 
     /* display: table centering is the most reliable full-height centering on iOS 9. */
@@ -1268,6 +1275,9 @@
       var MIN_DIGIT = 44;
       var MAX_DIGIT = 700;
 
+      var HOLD_SLOP = 12;            /* px a finger may drift and still count as a hold, not a swipe */
+      var HOLD_CLICK_WINDOW = 1200;  /* ms a long press may suppress the click that follows it */
+
       var DAY_NAMES = {
         en: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
         ru: ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"]
@@ -1421,6 +1431,9 @@
       var statusTimer = null;
       var holdTimer = null;
       var holdTriggered = false;
+      var holdFiredAt = 0;      /* when the long press last fired, to age out a stale swallow */
+      var holdX = 0;
+      var holdY = 0;
       var resizeTimer = null;
       var lastDateKey = "";
       var lastDimState = null;
@@ -2296,6 +2309,32 @@
         }
       }
 
+      /*
+        { passive: true } where it is supported, plain false where it is not.
+        Probing is the only way to tell: a browser that does not know the options
+        object silently treats it as useCapture instead.
+      */
+      function listenerOptions() {
+        var supported = false;
+        var probe;
+
+        try {
+          probe = Object.defineProperty({}, "passive", {
+            get: function () {
+              supported = true;
+              return true;
+            }
+          });
+
+          window.addEventListener("passivetest", null, probe);
+          window.removeEventListener("passivetest", null, probe);
+        } catch (error) {
+          supported = false;
+        }
+
+        return supported ? { passive: true } : false;
+      }
+
       function isInsideSettings(node) {
         while (node) {
           if (node === settingsPanel) {
@@ -2308,8 +2347,25 @@
         return false;
       }
 
+      /*
+        The long press is armed here and disarmed in three places, because the
+        flag that says "a long press just happened" is also what suppresses the
+        click the browser sends afterwards - and if it is ever left standing, the
+        next tap is swallowed instead.
+
+        That is exactly what made the settings button need two taps. A long press
+        on the clock set the flag; on Android the click that should have cleared
+        it often never arrives, because the platform swallows it after a long
+        press of its own. The flag then stayed set until the next tap paid for it.
+        So every new touch now clears it first, before any early return, and the
+        suppression additionally ages out on its own.
+      */
       function startHold(event) {
         var target = event.target || event.srcElement;
+        var touch = event.touches && event.touches[0];
+
+        holdTriggered = false;
+        endHold();
 
         if (event.touches && event.touches.length > 1) {
           return;
@@ -2319,11 +2375,27 @@
           return;
         }
 
-        holdTriggered = false;
+        holdX = touch ? touch.clientX : 0;
+        holdY = touch ? touch.clientY : 0;
+
         holdTimer = setTimeout(function () {
           holdTriggered = true;
+          holdFiredAt = new Date().getTime();
           toggleSeconds();
         }, 700);
+      }
+
+      /* A finger that travels is a swipe, not a hold: seconds should not toggle under it. */
+      function trackHold(event) {
+        var touch = event.touches && event.touches[0];
+
+        if (!holdTimer || !touch) {
+          return;
+        }
+
+        if (Math.abs(touch.clientX - holdX) > HOLD_SLOP || Math.abs(touch.clientY - holdY) > HOLD_SLOP) {
+          endHold();
+        }
       }
 
       function endHold() {
@@ -2340,7 +2412,14 @@
 
         if (holdTriggered) {
           holdTriggered = false;
-          return;
+
+          /*
+            Only swallow the click that belongs to the long press. Anything later
+            is a real tap arriving after a click that never came.
+          */
+          if (new Date().getTime() - holdFiredAt < HOLD_CLICK_WINDOW) {
+            return;
+          }
         }
 
         if (target === settingsButton) {
@@ -2472,9 +2551,18 @@
         }
       };
 
-      document.addEventListener("touchstart", startHold, false);
-      document.addEventListener("touchend", endHold, false);
-      document.addEventListener("touchcancel", endHold, false);
+      /*
+        The touch handlers never call preventDefault, so they can be passive.
+        Chrome on Android otherwise has to hold every touch until the listener
+        has run, because a non-passive touchstart on the document is allowed to
+        cancel the gesture - which shows up as the whole clock feeling sluggish.
+        iOS 9 predates the options object and reads it as a truthy useCapture, so
+        the flag is only passed where the browser actually understands it.
+      */
+      document.addEventListener("touchstart", startHold, listenerOptions());
+      document.addEventListener("touchmove", trackHold, listenerOptions());
+      document.addEventListener("touchend", endHold, listenerOptions());
+      document.addEventListener("touchcancel", endHold, listenerOptions());
       document.addEventListener("click", handleTap, false);
       window.addEventListener("resize", handleResize, false);
       window.addEventListener("orientationchange", handleResize, false);

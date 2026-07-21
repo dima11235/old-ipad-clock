@@ -10,7 +10,7 @@
   index.html changes.
 */
 
-var CACHE_NAME = 'retro-clock-v73';
+var CACHE_NAME = 'retro-clock-v74';
 var ASSETS = ['./', './index.html'];
 
 self.addEventListener('install', function (event) {
