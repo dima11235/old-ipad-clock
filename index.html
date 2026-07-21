@@ -407,11 +407,11 @@
       display: block;
     }
 
+    /* top comes from applyMetrics(), like every other size that depends on the digit. */
     #meridiem {
       display: none;
       position: absolute;
       left: 0;
-      top: 0;
       letter-spacing: 0.12em;
       font-weight: bold;
       color: currentColor;
@@ -1270,6 +1270,15 @@
       var SECONDS_LEAD = 0.10;    /* space between the minutes and the annunciator column */
       var MERIDIEM_SIZE = 0.16;   /* AM/PM font size */
       var MERIDIEM_WIDTH = 0.42;  /* column width AM/PM needs at that font size */
+      /*
+        How far AM/PM sits below the top of its column. It cannot be flush with it:
+        a digit's ink starts well inside its box, because the top segment is inset
+        and its glow spreads from the bar, while a letter starts at the very top of
+        its line and its glow spreads upwards from there. Left at zero the label
+        cleared the panel edge by -2px - that is, it crossed it - while the digits
+        beside it kept 20px of margin. This puts the two back on comparable footing.
+      */
+      var MERIDIEM_TOP = 0.07;
       var DATE_SIZE = 0.19;       /* date font size */
       var DATE_GAP = 0.12;        /* space between the digits and the date line */
       var MIN_DIGIT = 44;
@@ -1746,7 +1755,7 @@
           ".seconds .num{font-size:" + px(digitH * SECONDS_SCALE * 0.82) + ";line-height:" + px(digitH * SECONDS_SCALE) + "}",
           ".frame{padding:" + px(digitH * box.padY) + " " + px(digitH * box.padX) + ";border-radius:" + px(digitH * box.radius) + "}",
           "#date-line{font-size:" + px(digitH * DATE_SIZE) + ";margin-top:" + px(digitH * DATE_GAP) + "}",
-          "#meridiem{font-size:" + px(digitH * MERIDIEM_SIZE) + "}",
+          "#meridiem{font-size:" + px(digitH * MERIDIEM_SIZE) + ";top:" + px(digitH * MERIDIEM_TOP) + "}",
           filamentCss(digitH * 0.26)
         ].join("\n");
 
