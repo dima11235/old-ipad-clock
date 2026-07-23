@@ -2040,9 +2040,18 @@
       /*
         The sun moves slowly enough that today's times are worth keeping until the
         date rolls over; applyDim runs five times a second.
+
+        The times are always computed for local noon, never for the current
+        instant. Just after local midnight the moment is still the previous day in
+        UTC, and sunTimes, which works in UTC, then returns yesterday's sunrise -
+        a time already in the past. morningEnd would take that as "sunrise has
+        happened" and lift the dimming, so the clock spent the small hours in the
+        day look until the local and UTC dates lined up again. Noon is the same
+        calendar day in both, so the answer is stable across the whole night.
       */
       function sunToday(now) {
         var key;
+        var noon;
 
         if (!hasLocation()) {
           return null;
@@ -2051,7 +2060,8 @@
         key = now.getFullYear() + "-" + now.getMonth() + "-" + now.getDate();
 
         if (!sunCache || sunCache.key !== key) {
-          sunCache = sunTimes(now, settings.latitude, settings.longitude);
+          noon = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0, 0);
+          sunCache = sunTimes(noon, settings.latitude, settings.longitude);
           sunCache.key = key;
         }
 
