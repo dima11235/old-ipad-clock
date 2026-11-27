@@ -44,7 +44,8 @@ var MODES = ['led', 'nixie', 'vfd', 'lcd', 'flat'];
 var SHAPES = [
   { name: 'plain', settings: {} },
   { name: 'seconds-date', settings: { showSeconds: true, showDate: true } },
-  { name: 'seconds-date-12h-bold', settings: { showSeconds: true, showDate: true, hour12: true, weight: 'bold', language: 'ru' } }
+  { name: 'seconds-date-12h-bold', settings: { showSeconds: true, showDate: true, hour12: true, weight: 'bold', language: 'ru' } },
+  { name: 'retro-date', settings: { showDate: true, monthFormat: 'retro', language: 'ru' } }
 ];
 
 /*
@@ -110,32 +111,53 @@ function checkFit(browser) {
         chain = chain.then(function () {
           return open(browser, device, settingsFor(mode, shape.settings)).then(function (page) {
             return page.evaluate(function () {
-              var box = document.getElementById('clock').getBoundingClientRect();
-              var digit = document.querySelector('.digit').getBoundingClientRect();
+              var months = document.getElementById('date-months');
+              var week = document.getElementById('date-week');
 
-              return {
-                left: box.left,
-                top: box.top,
-                right: box.right,
-                bottom: box.bottom,
-                viewportWidth: window.innerWidth,
-                viewportHeight: window.innerHeight,
-                widthUsed: box.width / window.innerWidth,
-                digitHeight: Math.round(digit.height)
-              };
+              function measure() {
+                var box = document.getElementById('clock').getBoundingClientRect();
+                var digit = document.querySelector('.digit').getBoundingClientRect();
+                var labelsRight = document.getElementById('date-labels').getBoundingClientRect().right;
+                var monthsOverflow = [week, months].some(function (row) {
+                  return row.lastElementChild && row.lastElementChild.getBoundingClientRect().right > labelsRight + 1;
+                });
+
+                return {
+                  left: box.left,
+                  top: box.top,
+                  right: box.right,
+                  bottom: box.bottom,
+                  viewportWidth: window.innerWidth,
+                  viewportHeight: window.innerHeight,
+                  widthUsed: box.width / window.innerWidth,
+                  digitHeight: Math.round(digit.height),
+                  monthsOverflow: monthsOverflow
+                };
+              }
+
+              if (!months.lastElementChild) {
+                return measure();
+              }
+
+              document.getElementById('date-labels').style.fontFamily = 'Arial, sans-serif';
+              window.dispatchEvent(new Event('resize'));
+              return new Promise(function (resolve) {
+                setTimeout(function () { resolve(measure()); }, 175);
+              });
             }).then(function (info) {
               var overflows = info.left < -1 || info.top < -1 ||
                 info.right > info.viewportWidth + 1 || info.bottom > info.viewportHeight + 1;
               var wastesWidth = info.widthUsed < 0.9;
 
-              if (overflows || wastesWidth) {
+              if (overflows || wastesWidth || info.monthsOverflow) {
                 problems.push({
                   device: device.name,
                   mode: mode,
                   shape: shape.name,
                   digitHeight: info.digitHeight,
                   widthUsed: Math.round(info.widthUsed * 100) + '%',
-                  reason: overflows ? 'overflows the screen' : 'leaves the screen half empty'
+                  reason: info.monthsOverflow ? 'months overflow the calendar' :
+                    overflows ? 'overflows the screen' : 'leaves the screen half empty'
                 });
               }
 
@@ -225,7 +247,7 @@ function checkBrightness(browser) {
             ? digit.querySelector('.num.on')
             : digit.querySelector('.seg-b');
           var weekday = document.createRange();
-          weekday.selectNodeContents(document.querySelector('#date-week .date-weekday.on'));
+          weekday.selectNodeContents(document.querySelector('#date-week .date-label.on'));
 
           return {
             digit: lit.getBoundingClientRect().toJSON(),

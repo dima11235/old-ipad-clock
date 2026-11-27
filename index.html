@@ -417,9 +417,7 @@
       justify-content: center;
     }
 
-    #date-week {
-      display: -webkit-flex;
-      display: flex;
+    #date-labels {
       -webkit-flex: 0 0 auto;
       flex: 0 0 auto;
       font-family: "Avenir Next Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
@@ -428,13 +426,44 @@
       line-height: 0.77;
     }
 
-    .date-weekday {
+    #date-week,
+    body.date-retro #date-months {
+      display: -webkit-flex;
+      display: flex;
+    }
+
+    #date-months {
+      display: none;
+    }
+
+    .date-label {
       -webkit-flex: 0 0 auto;
       flex: 0 0 auto;
     }
 
-    .date-weekday + .date-weekday {
+    .date-label + .date-label {
       margin-left: 0.14em;
+    }
+
+    body.date-retro #date-labels {
+      display: -webkit-flex;
+      display: flex;
+      -webkit-flex-direction: column;
+      flex-direction: column;
+      -webkit-justify-content: center;
+      justify-content: center;
+      letter-spacing: 0;
+    }
+
+    body.date-retro #date-week,
+    body.date-retro #date-months {
+      -webkit-justify-content: space-between;
+      justify-content: space-between;
+    }
+
+    body.date-retro #date-value {
+      -webkit-order: -1;
+      order: -1;
     }
 
     #date-value {
@@ -527,35 +556,35 @@
     }
 
     /* Unlit letters sit lower on the panel and receive less neighbouring glow. */
-    .date-weekday:not(.on) {
+    .date-label:not(.on) {
       color: rgba(255, 255, 255, 0.06);
     }
 
-    body.mode-led .date-weekday:not(.on),
-    body.mode-flat .date-weekday:not(.on) {
+    body.mode-led .date-label:not(.on),
+    body.mode-flat .date-label:not(.on) {
       color: rgba(255, 255, 255, 0.09);
     }
 
-    body.mode-vfd .date-weekday:not(.on) {
+    body.mode-vfd .date-label:not(.on) {
       color: inherit;
       opacity: 0.16;
     }
 
-    body.mode-lcd .date-weekday:not(.on) {
+    body.mode-lcd .date-label:not(.on) {
       color: rgba(18, 22, 16, 0.13);
     }
 
-    body.mode-led .date-weekday.on {
+    body.mode-led .date-label.on {
       -webkit-text-fill-color: rgba(255, 255, 255, 0.28);
       text-shadow: 0 0 0 currentColor, 0 0 0.08em currentColor, 0 0 0.17em currentColor;
     }
 
-    body.mode-vfd .date-weekday.on {
+    body.mode-vfd .date-label.on {
       -webkit-text-fill-color: rgba(255, 255, 255, 0.55);
       text-shadow: 0 0 0 currentColor, 0 0 0.13em currentColor, 0 0 0.26em currentColor;
     }
 
-    body.mode-nixie .date-weekday.on {
+    body.mode-nixie .date-label.on {
       text-shadow: 0 0 0.08em #ffc88c, 0 0 0.18em #ff9137;
     }
 
@@ -1246,7 +1275,10 @@
         <div id="time"></div>
         <div class="filaments"></div>
         <div id="date-line" role="img">
-          <div id="date-week"></div>
+          <div id="date-labels">
+            <div id="date-week"></div>
+            <div id="date-months"></div>
+          </div>
           <div id="date-value"></div>
         </div>
         <div id="meridiem">AM</div>
@@ -1322,10 +1354,11 @@
         </div>
       </div>
       <div class="settings-row">
-        <div class="settings-label" data-i18n="month">Month</div>
+        <div class="settings-label" data-i18n="calendar">Calendar</div>
         <div class="settings-options" id="month-options">
           <span class="option-button" data-month-format="numeric" data-i18n="numeric">Digits</span>
           <span class="option-button" data-month-format="letters" data-i18n="letters">Letters</span>
+          <span class="option-button" data-month-format="retro" data-i18n="retro">Retro</span>
         </div>
       </div>
     </div>
@@ -1387,7 +1420,7 @@
       var THEMES = ["amber", "red", "green", "ice"];
       var WEIGHTS = ["thin", "bold"];
       var LANGUAGES = ["en", "ru"];
-      var MONTH_FORMATS = ["numeric", "letters"];
+      var MONTH_FORMATS = ["numeric", "letters", "retro"];
 
       /*
          Proportions of one display, expressed in units of the main digit height.
@@ -1432,6 +1465,15 @@
       var DATE_VALUE_WIDTH = 3.65;    /* em for the day, separator and three-letter month */
       var DATE_VALUE_GAP = 1.35;      /* em between the weekdays and date */
       var DATE_ROW_WIDTH = WEEKDAY_ROW_WIDTH * WEEKDAY_FONT_SCALE + DATE_VALUE_WIDTH * DATE_VALUE_SCALE + DATE_VALUE_GAP;
+      var RETRO_DAY_WIDTH = 1.24;     /* em for the two day digits */
+      var RETRO_DATE_INSET = 0.035;  /* outer gutters relative to the main digits */
+      var RETRO_DATE_GAP = 0.6;      /* em between the number and the two rows */
+      var RETRO_LABEL_SCALE = 1.40;   /* maximum label size relative to the base calendar size */
+      var RETRO_LABEL_LINE_HEIGHT = 0.95;
+      var RETRO_LABEL_GAP = 0.32;    /* minimum horizontal gap in label em */
+      var RETRO_ROW_GAP = 0.19;      /* leave room for the breve in МАЙ */
+      var RETRO_ROWS_HEIGHT = 2 * RETRO_LABEL_LINE_HEIGHT + RETRO_ROW_GAP;
+      var RETRO_LABEL_PAD = 0.25;     /* allow for rounding when the measured font is scaled */
       var MIN_DIGIT = 44;
       var MAX_DIGIT = 700;
 
@@ -1501,9 +1543,10 @@
           bold: "Bold",
           seconds: "Seconds",
           date: "Date",
-          month: "Month",
+          calendar: "Calendar",
           numeric: "Digits",
           letters: "Letters",
+          retro: "Retro",
           colonBlink: "Colon Blink",
           nightDim: "Night Dim",
           nightBrightness: "Night brightness",
@@ -1524,7 +1567,7 @@
           statusSecondsOff: "seconds off",
           statusDateOn: "date on",
           statusDateOff: "date off",
-          statusMonth: "month: ",
+          statusCalendar: "calendar: ",
           statusBlinkOn: "blink on",
           statusBlinkOff: "blink off",
           statusDimAuto: "night dim auto",
@@ -1555,9 +1598,10 @@
           bold: "Толстый",
           seconds: "Секунды",
           date: "Дата",
-          month: "Месяц",
+          calendar: "Календарь",
           numeric: "Цифры",
           letters: "Буквы",
+          retro: "Ретро",
           colonBlink: "Мигание",
           nightDim: "Ночной режим",
           nightBrightness: "Яркость ночью",
@@ -1578,7 +1622,7 @@
           statusSecondsOff: "секунды выключены",
           statusDateOn: "дата включена",
           statusDateOff: "дата выключена",
-          statusMonth: "месяц: ",
+          statusCalendar: "календарь: ",
           statusBlinkOn: "мигание включено",
           statusBlinkOff: "мигание выключено",
           statusDimAuto: "ночной режим авто",
@@ -1612,7 +1656,8 @@
       var timeNode = document.getElementById("time");
       var dateNode = document.getElementById("date-line");
       var dateValueNode = document.getElementById("date-value");
-      var weekNode = document.getElementById("date-week");
+      var weekLabels = { row: document.getElementById("date-week"), nodes: [], language: "" };
+      var monthLabels = { row: document.getElementById("date-months"), nodes: [], language: "", topCount: 0 };
       var meridiemNode = document.getElementById("meridiem");
       var metricsNode = document.getElementById("metrics");
       var statusNode = document.getElementById("status");
@@ -1634,7 +1679,6 @@
       var holdY = 0;
       var resizeTimer = null;
       var lastDateKey = "";
-      var weekdayLanguage = "";
       var lastDimState = null;
       var lastTickAt = 0;
       var tickTimer = null;
@@ -1910,6 +1954,13 @@
         var sideW = 0;
         var digitH;
         var calendarSize;
+        var timeWidth;
+        var labelScale = WEEKDAY_FONT_SCALE;
+        var labelWidth = 0;
+        var dateScale = DATE_VALUE_SCALE;
+        var retroDate = settings.monthFormat === "retro";
+        var valueGap = retroDate ? RETRO_DATE_GAP : DATE_VALUE_GAP;
+        var retroWidth;
         var css;
 
         lastViewport = viewportW + "x" + viewportH;
@@ -1931,9 +1982,16 @@
           unitsW += SECONDS_LEAD + sideW;
         }
 
-        calendarSize = Math.min(DATE_SIZE, (unitsW - 2 * box.padX - 2 * DATE_INSET) / DATE_ROW_WIDTH);
+        timeWidth = unitsW - 2 * box.padX;
+        calendarSize = Math.min(DATE_SIZE, (timeWidth - 2 * DATE_INSET) / DATE_ROW_WIDTH);
+        if (retroDate && settings.showDate) {
+          retroWidth = (timeWidth - 2 * RETRO_DATE_INSET) / calendarSize - valueGap;
+          labelScale = fitRetroLabels(retroWidth);
+          dateScale = RETRO_ROWS_HEIGHT * labelScale;
+          labelWidth = (retroWidth - RETRO_DAY_WIDTH * dateScale) / labelScale;
+        }
         if (settings.showDate) {
-          unitsH += DATE_GAP + calendarSize * DATE_VALUE_SCALE;
+          unitsH += DATE_GAP + calendarSize * dateScale;
         }
 
         digitH = Math.min(availableW / unitsW, availableH / unitsH);
@@ -1952,15 +2010,73 @@
           ".seconds .num{font-size:" + px(digitH * SECONDS_SCALE * 0.82) + ";line-height:" + px(digitH * SECONDS_SCALE) + "}",
           ".frame{padding:" + px(digitH * box.padY) + " " + px(digitH * box.padX) + ";border-radius:" + px(digitH * box.radius) + "}",
           "#date-line{font-size:" + px(digitH * calendarSize) + ";margin-top:" + px(digitH * DATE_GAP) + "}",
-          "#date-week{font-size:" + WEEKDAY_FONT_SCALE + "em}",
-          "#date-value{font-size:" + DATE_VALUE_SCALE + "em;width:" + DATE_VALUE_WIDTH + "em;margin-left:" +
-            px(digitH * calendarSize * DATE_VALUE_GAP) + "}",
+          "#date-labels{font-size:" + labelScale + "em}",
+          ".date-retro #date-labels{width:" + labelWidth + "em;min-height:" +
+            px(digitH * calendarSize * dateScale) + ";line-height:" + RETRO_LABEL_LINE_HEIGHT + "}",
+          ".date-retro .date-label+.date-label{margin-left:" + RETRO_LABEL_GAP + "em}",
+          ".date-retro #date-months{margin-top:" + RETRO_ROW_GAP + "em}",
+          "#date-value{font-size:" + dateScale + "em;width:" + (retroDate ? RETRO_DAY_WIDTH : DATE_VALUE_WIDTH) + "em;" +
+            (retroDate ? "margin-right:" : "margin-left:") +
+            px(digitH * calendarSize * valueGap) + "}",
           "#meridiem{font-size:" + px(digitH * MERIDIEM_SIZE) + ";top:" + px(digitH * MERIDIEM_TOP) + "}",
           filamentCss(digitH * 0.26)
         ].join("\n");
 
         setStyleText(metricsNode, css);
         measureDrift(viewportW, viewportH);
+      }
+
+      function fitRetroLabels(availableWidth) {
+        var fontSize = parseFloat(window.getComputedStyle(weekLabels.row).fontSize);
+        var gap = RETRO_LABEL_GAP;
+        var week = weekLabels.nodes;
+        var months = monthLabels.nodes;
+        var weekWidth = -gap;
+        var topWidths;
+        var monthsWidth = -gap;
+        var dateWidth = RETRO_DAY_WIDTH * RETRO_ROWS_HEIGHT;
+        var bestWidth = Infinity;
+        var i;
+        var width;
+        var bottomWidth;
+        var scale;
+        var split = 0;
+
+        for (i = 0; i < week.length; i++) {
+          weekWidth += week[i].getBoundingClientRect().width / fontSize + gap;
+        }
+        topWidths = [weekWidth];
+
+        for (i = 0; i < months.length; i++) {
+          width = months[i].getBoundingClientRect().width / fontSize + gap;
+          topWidths.push(topWidths[i] + width);
+          monthsWidth += width;
+        }
+
+        /* Fit the widest row and the day digits at the same scale. */
+        for (i = 0; i < months.length; i++) {
+          bottomWidth = monthsWidth - (topWidths[i] - weekWidth);
+          bestWidth = Math.min(bestWidth, Math.max(topWidths[i], bottomWidth));
+        }
+        scale = Math.min(RETRO_LABEL_SCALE, availableWidth / (dateWidth + bestWidth + RETRO_LABEL_PAD));
+
+        while (split + 1 < months.length &&
+            (dateWidth + topWidths[split + 1] + RETRO_LABEL_PAD) * scale <= availableWidth + 0.0001) {
+          split++;
+        }
+        placeRetroMonths(split);
+        return scale;
+      }
+
+      function placeRetroMonths(topCount) {
+        var i;
+        if (monthLabels.topCount === topCount) {
+          return;
+        }
+        for (i = 0; i < monthLabels.nodes.length; i++) {
+          (i < topCount ? weekLabels.row : monthLabels.row).appendChild(monthLabels.nodes[i]);
+        }
+        monthLabels.topCount = topCount;
       }
 
       /* Horizontal filament wires of a VFD tube, spaced with the digit height. */
@@ -2021,13 +2137,14 @@
         setFlag("weight-bold", settings.weight === "bold");
         setFlag("show-seconds", settings.showSeconds);
         setFlag("show-date", settings.showDate);
+        setFlag("date-retro", settings.monthFormat === "retro");
         setFlag("hour12", settings.hour12);
         applyLanguage();
+        lastDateKey = "";
+        drawDate(new Date());
         applyMetrics();
         refreshSettingsUI();
 
-        /* The date and dim state are cached, so force a redraw after any change. */
-        lastDateKey = "";
         lastDimState = null;
         resetCells();
         tick();
@@ -2141,6 +2258,7 @@
         var lang = settings.language;
         var weekday = (now.getDay() + 6) % 7;
         var weekdays = DAY_ABBREVIATIONS[lang];
+        var months = MONTH_ABBREVIATIONS[lang];
         var dayText;
         var monthText;
         var separator;
@@ -2152,35 +2270,45 @@
 
         lastDateKey = key;
         dayText = pad(day);
-        separator = settings.monthFormat === "letters" ? " " : ".";
-        monthText = separator === "." ? pad(month + 1) : MONTH_ABBREVIATIONS[lang][month];
-        monthGroup = createDateGroup(monthText);
-        monthGroup.className += " date-month";
+        separator = settings.monthFormat === "numeric" ? "." : " ";
+        monthText = separator === "." ? pad(month + 1) : months[month];
 
         dateNode.setAttribute("aria-label", weekdays[weekday] + " " + dayText + separator + monthText);
         dateValueNode.textContent = "";
         dateValueNode.appendChild(createDateGroup(dayText));
-        dateValueNode.appendChild(createDateGlyph(separator));
-        dateValueNode.appendChild(monthGroup);
-        drawWeekdays(weekdays, weekday, lang);
+        if (settings.monthFormat !== "retro" || monthLabels.language !== lang) {
+          placeRetroMonths(0);
+        }
+        drawCalendarLabels(weekLabels, weekdays, weekday, lang);
+
+        if (settings.monthFormat === "retro") {
+          drawCalendarLabels(monthLabels, months, month, lang);
+        } else {
+          monthGroup = createDateGroup(monthText);
+          monthGroup.className += " date-month";
+          dateValueNode.appendChild(createDateGlyph(separator));
+          dateValueNode.appendChild(monthGroup);
+        }
       }
 
-      function drawWeekdays(weekdays, active, language) {
+      function drawCalendarLabels(strip, labels, active, language) {
         var i;
-        var day;
+        var labelNode;
 
-        if (weekdayLanguage !== language) {
-          weekdayLanguage = language;
-          weekNode.textContent = "";
-          for (i = 0; i < weekdays.length; i++) {
-            day = document.createElement("span");
-            day.textContent = weekdays[i];
-            weekNode.appendChild(day);
+        if (strip.language !== language) {
+          strip.language = language;
+          strip.row.textContent = "";
+          strip.nodes = [];
+          for (i = 0; i < labels.length; i++) {
+            labelNode = document.createElement("span");
+            labelNode.textContent = labels[i];
+            strip.row.appendChild(labelNode);
+            strip.nodes.push(labelNode);
           }
         }
 
-        for (i = 0; i < weekdays.length; i++) {
-          weekNode.children[i].className = i === active ? "date-weekday on" : "date-weekday";
+        for (i = 0; i < labels.length; i++) {
+          strip.nodes[i].className = i === active ? "date-label on" : "date-label";
         }
       }
 
@@ -2648,7 +2776,7 @@
         { attribute: "data-weight", apply: function (v) { setSetting("weight", v); return label("statusWeight") + label(v); } },
         { attribute: "data-seconds", apply: function (v) { setSetting("showSeconds", v === "on"); return label(v === "on" ? "statusSecondsOn" : "statusSecondsOff"); } },
         { attribute: "data-date", apply: function (v) { setSetting("showDate", v === "on"); return label(v === "on" ? "statusDateOn" : "statusDateOff"); } },
-        { attribute: "data-month-format", apply: function (v) { setSetting("monthFormat", v); return label("statusMonth") + label(v); } },
+        { attribute: "data-month-format", apply: function (v) { setSetting("monthFormat", v); return label("statusCalendar") + label(v); } },
         { attribute: "data-blink", apply: function (v) { setSetting("blink", v === "on"); return label(v === "on" ? "statusBlinkOn" : "statusBlinkOff"); } },
         { attribute: "data-dim", apply: function (v) { setSetting("autoDim", v === "auto"); return label(v === "auto" ? "statusDimAuto" : "statusDimOff"); } }
       ];
