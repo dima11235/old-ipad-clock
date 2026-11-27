@@ -1187,11 +1187,19 @@
         </div>
       </div>
       <div class="settings-row">
-        <div class="settings-label" data-i18n="colonBlink">Colon Blink</div>
-        <div class="settings-options" id="blink-options">
-          <span class="option-button" data-blink="on" data-i18n="on">On</span>
-          <span class="option-button" data-blink="off" data-i18n="off">Off</span>
+        <div class="settings-label" data-i18n="month">Month</div>
+        <div class="settings-options" id="month-options">
+          <span class="option-button" data-month-format="numeric" data-i18n="numeric">Digits</span>
+          <span class="option-button" data-month-format="letters" data-i18n="letters">Letters</span>
         </div>
+      </div>
+    </div>
+
+    <div class="settings-row">
+      <div class="settings-label" data-i18n="colonBlink">Colon Blink</div>
+      <div class="settings-options" id="blink-options">
+        <span class="option-button" data-blink="on" data-i18n="on">On</span>
+        <span class="option-button" data-blink="off" data-i18n="off">Off</span>
       </div>
     </div>
 
@@ -1244,6 +1252,7 @@
       var THEMES = ["amber", "red", "green", "ice"];
       var WEIGHTS = ["thin", "bold"];
       var LANGUAGES = ["en", "ru"];
+      var MONTH_FORMATS = ["numeric", "letters"];
 
       /*
          Proportions of one display, expressed in units of the main digit height.
@@ -1289,14 +1298,14 @@
       var TICK_MS = 200;
       var TICK_GAP = 5000;           /* a gap this long means the page was frozen, not merely late */
 
-      var DAY_NAMES = {
-        en: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
-        ru: ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"]
+      var DAY_ABBREVIATIONS = {
+        en: ["SU", "MO", "TU", "WE", "TH", "FR", "SA"],
+        ru: ["ВС", "ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ"]
       };
 
-      var MONTH_NAMES = {
-        en: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
-        ru: ["Января", "Февраля", "Марта", "Апреля", "Мая", "Июня", "Июля", "Августа", "Сентября", "Октября", "Ноября", "Декабря"]
+      var MONTH_ABBREVIATIONS = {
+        en: ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"],
+        ru: ["ЯНВ", "ФЕВ", "МАР", "АПР", "МАЙ", "ИЮН", "ИЮЛ", "АВГ", "СЕН", "ОКТ", "НОЯ", "ДЕК"]
       };
 
       var LABELS = {
@@ -1325,6 +1334,9 @@
           bold: "Bold",
           seconds: "Seconds",
           date: "Date",
+          month: "Month",
+          numeric: "Digits",
+          letters: "Letters",
           colonBlink: "Colon Blink",
           nightDim: "Night Dim",
           nightBrightness: "Night brightness",
@@ -1345,6 +1357,7 @@
           statusSecondsOff: "seconds off",
           statusDateOn: "date on",
           statusDateOff: "date off",
+          statusMonth: "month: ",
           statusBlinkOn: "blink on",
           statusBlinkOff: "blink off",
           statusDimAuto: "night dim auto",
@@ -1375,6 +1388,9 @@
           bold: "Толстый",
           seconds: "Секунды",
           date: "Дата",
+          month: "Месяц",
+          numeric: "Цифры",
+          letters: "Буквы",
           colonBlink: "Мигание",
           nightDim: "Ночной режим",
           nightBrightness: "Яркость ночью",
@@ -1395,6 +1411,7 @@
           statusSecondsOff: "секунды выключены",
           statusDateOn: "дата включена",
           statusDateOff: "дата выключена",
+          statusMonth: "месяц: ",
           statusBlinkOn: "мигание включено",
           statusBlinkOff: "мигание выключено",
           statusDimAuto: "ночной режим авто",
@@ -1410,6 +1427,7 @@
         hour12: false,
         showSeconds: false,
         showDate: false,
+        monthFormat: "numeric",
         blink: true,
         autoDim: true,
         nightBrightness: 50,
@@ -1550,6 +1568,10 @@
 
           if (contains(LANGUAGES, saved.language)) {
             result.language = saved.language;
+          }
+
+          if (contains(MONTH_FORMATS, saved.monthFormat)) {
+            result.monthFormat = saved.monthFormat;
           }
 
           result.hour12 = saved.hour12 === true;
@@ -1935,15 +1957,20 @@
       }
 
       function drawDate(now) {
-        var key = now.getFullYear() + "-" + now.getMonth() + "-" + now.getDate() + "-" + settings.language;
-        var lang = settings.language === "ru" ? "ru" : "en";
+        var month = now.getMonth();
+        var day = now.getDate();
+        var key = now.getFullYear() + "-" + month + "-" + day;
+        var lang = settings.language;
+        var date;
 
         if (key === lastDateKey) {
           return;
         }
 
         lastDateKey = key;
-        dateNode.innerHTML = DAY_NAMES[lang][now.getDay()] + " " + now.getDate() + " " + MONTH_NAMES[lang][now.getMonth()];
+        date = settings.monthFormat === "letters" ?
+          pad(day) + " " + MONTH_ABBREVIATIONS[lang][month] : pad(day) + "." + pad(month + 1);
+        dateNode.textContent = DAY_ABBREVIATIONS[lang][now.getDay()] + " " + date;
       }
 
       /* ---------------------------------------------------------------
@@ -2262,6 +2289,7 @@
         setOptionActive("weight-options", "data-weight", settings.weight);
         setOptionActive("seconds-options", "data-seconds", settings.showSeconds ? "on" : "off");
         setOptionActive("date-options", "data-date", settings.showDate ? "on" : "off");
+        setOptionActive("month-options", "data-month-format", settings.monthFormat);
         setOptionActive("blink-options", "data-blink", settings.blink ? "on" : "off");
         setOptionActive("dim-options", "data-dim", settings.autoDim ? "auto" : "off");
         dimRange.value = settings.nightBrightness;
@@ -2362,6 +2390,7 @@
         { attribute: "data-weight", apply: function (v) { setSetting("weight", v); return label("statusWeight") + label(v); } },
         { attribute: "data-seconds", apply: function (v) { setSetting("showSeconds", v === "on"); return label(v === "on" ? "statusSecondsOn" : "statusSecondsOff"); } },
         { attribute: "data-date", apply: function (v) { setSetting("showDate", v === "on"); return label(v === "on" ? "statusDateOn" : "statusDateOff"); } },
+        { attribute: "data-month-format", apply: function (v) { setSetting("monthFormat", v); return label("statusMonth") + label(v); } },
         { attribute: "data-blink", apply: function (v) { setSetting("blink", v === "on"); return label(v === "on" ? "statusBlinkOn" : "statusBlinkOff"); } },
         { attribute: "data-dim", apply: function (v) { setSetting("autoDim", v === "auto"); return label(v === "auto" ? "statusDimAuto" : "statusDimOff"); } }
       ];
