@@ -405,7 +405,42 @@
     }
 
     body.show-date #date-line {
-      display: block;
+      display: -webkit-flex;
+      display: flex;
+      -webkit-align-items: center;
+      align-items: center;
+      -webkit-justify-content: center;
+      justify-content: center;
+    }
+
+    #date-week {
+      display: -webkit-flex;
+      display: flex;
+      -webkit-flex: 0 0 auto;
+      flex: 0 0 auto;
+      font-family: "Avenir Next Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+      font-weight: bold;
+      letter-spacing: 0.045em;
+      line-height: 0.77;
+    }
+
+    .date-weekday {
+      -webkit-flex: 0 0 auto;
+      flex: 0 0 auto;
+    }
+
+    #date-value {
+      display: -webkit-flex;
+      display: flex;
+      -webkit-flex: 0 0 auto;
+      flex: 0 0 auto;
+      -webkit-justify-content: space-between;
+      justify-content: space-between;
+      height: 1em;
+    }
+
+    .date-month {
+      width: 2.12em;
     }
 
     .date-group,
@@ -413,10 +448,6 @@
       display: inline-block;
       vertical-align: top;
       height: 1em;
-    }
-
-    .date-weekday {
-      margin-right: 0.36em;
     }
 
     .date-glyph {
@@ -457,18 +488,24 @@
       color: rgba(15, 19, 14, 0.9);
     }
 
+    /* Keep the glow proportional to the smaller calendar glyphs. */
+    body.mode-led #date-line .seg.on:before,
+    body.mode-vfd #date-line .seg.on:before {
+      box-shadow:
+        0 0 0.08em rgba(255, 255, 255, 0.55),
+        0 0 0.22em currentColor,
+        0 0 0.37em currentColor;
+    }
+
     body.mode-led .date-pixel,
-    body.mode-led #date-line .seg.on:before {
-      box-shadow: 0 0 0.13em currentColor;
+    body.mode-vfd .date-pixel {
+      box-shadow:
+        0 0 0.05em rgba(255, 255, 255, 0.45),
+        0 0 0.15em currentColor;
     }
 
     body.mode-led .date-pixel {
       background-image: linear-gradient(rgba(255, 255, 255, 0.35), transparent);
-    }
-
-    body.mode-vfd .date-pixel,
-    body.mode-vfd #date-line .seg.on:before {
-      box-shadow: 0 0 0.15em currentColor;
     }
 
     body.mode-vfd .date-pixel {
@@ -485,7 +522,25 @@
 
     body.mode-nixie .date-pixel,
     body.mode-nixie #date-line .seg.on:before {
-      box-shadow: 0 0 0.16em #ff9137;
+      box-shadow: 0 0 0.08em #ffc88c, 0 0 0.18em #ff9137;
+    }
+
+    .date-weekday:not(.on) {
+      opacity: 0.27;
+    }
+
+    body.mode-led .date-weekday.on {
+      -webkit-text-fill-color: rgba(255, 255, 255, 0.28);
+      text-shadow: 0 0 0 currentColor, 0 0 0.08em currentColor, 0 0 0.17em currentColor;
+    }
+
+    body.mode-vfd .date-weekday.on {
+      -webkit-text-fill-color: rgba(255, 255, 255, 0.55);
+      text-shadow: 0 0 0 currentColor, 0 0 0.13em currentColor, 0 0 0.26em currentColor;
+    }
+
+    body.mode-nixie .date-weekday.on {
+      text-shadow: 0 0 0.08em #ffc88c, 0 0 0.18em #ff9137;
     }
 
     /* top comes from applyMetrics(), like every other size that depends on the digit. */
@@ -1168,7 +1223,10 @@
         <!-- #time is filled by buildDisplay(), which also moves #meridiem into it. -->
         <div id="time"></div>
         <div class="filaments"></div>
-        <div id="date-line" role="img"></div>
+        <div id="date-line" role="img">
+          <div id="date-week"></div>
+          <div id="date-value"></div>
+        </div>
         <div id="meridiem">AM</div>
       </div>
     </div>
@@ -1343,8 +1401,14 @@
         beside it kept 20px of margin. This puts the two back on comparable footing.
       */
       var MERIDIEM_TOP = 0.07;
-      var DATE_SIZE = 0.16;       /* calendar glyph height */
-      var DATE_GAP = 0.075;       /* space between the digits and the date line */
+      var DATE_SIZE = 0.125;     /* maximum calendar glyph height relative to the main digit */
+      var DATE_GAP = 0.075;      /* space below the time */
+      var DATE_INSET = 0.24;     /* minimum space at each end of the calendar */
+      var WEEKDAY_FONT_SCALE = 1.30; /* match the cap height to the calendar glyphs */
+      var WEEKDAY_CELL_WIDTH = 1.72; /* em relative to the weekday font */
+      var DATE_VALUE_WIDTH = 3.7;     /* em for the day, separator and three-letter month */
+      var DATE_VALUE_GAP = 0.6;       /* em between weekday cells and date */
+      var DATE_ROW_WIDTH = 7 * WEEKDAY_CELL_WIDTH * WEEKDAY_FONT_SCALE + DATE_VALUE_WIDTH + DATE_VALUE_GAP;
       var MIN_DIGIT = 44;
       var MAX_DIGIT = 700;
 
@@ -1354,8 +1418,8 @@
       var TICK_GAP = 5000;           /* a gap this long means the page was frozen, not merely late */
 
       var DAY_ABBREVIATIONS = {
-        en: ["SU", "MO", "TU", "WE", "TH", "FR", "SA"],
-        ru: ["ВС", "ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ"]
+        en: ["MO", "TU", "WE", "TH", "FR", "SA", "SU"],
+        ru: ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"]
       };
 
       var MONTH_ABBREVIATIONS = {
@@ -1524,6 +1588,8 @@
       var clockNode = document.getElementById("clock");
       var timeNode = document.getElementById("time");
       var dateNode = document.getElementById("date-line");
+      var dateValueNode = document.getElementById("date-value");
+      var weekNode = document.getElementById("date-week");
       var meridiemNode = document.getElementById("meridiem");
       var metricsNode = document.getElementById("metrics");
       var statusNode = document.getElementById("status");
@@ -1545,6 +1611,7 @@
       var holdY = 0;
       var resizeTimer = null;
       var lastDateKey = "";
+      var weekdayLanguage = "";
       var lastDimState = null;
       var lastTickAt = 0;
       var tickTimer = null;
@@ -1819,6 +1886,7 @@
         var unitsH = 1 + 2 * box.padY;
         var sideW = 0;
         var digitH;
+        var dateSize;
         var css;
 
         lastViewport = viewportW + "x" + viewportH;
@@ -1840,8 +1908,9 @@
           unitsW += SECONDS_LEAD + sideW;
         }
 
+        dateSize = Math.min(DATE_SIZE, (unitsW - 2 * box.padX - 2 * DATE_INSET) / DATE_ROW_WIDTH);
         if (settings.showDate) {
-          unitsH += DATE_GAP + DATE_SIZE;
+          unitsH += DATE_GAP + dateSize;
         }
 
         digitH = Math.min(availableW / unitsW, availableH / unitsH);
@@ -1859,7 +1928,10 @@
           ".seconds .digit{width:" + px(digitH * secondsCellW) + "}",
           ".seconds .num{font-size:" + px(digitH * SECONDS_SCALE * 0.82) + ";line-height:" + px(digitH * SECONDS_SCALE) + "}",
           ".frame{padding:" + px(digitH * box.padY) + " " + px(digitH * box.padX) + ";border-radius:" + px(digitH * box.radius) + "}",
-          "#date-line{font-size:" + px(digitH * DATE_SIZE) + ";margin-top:" + px(digitH * DATE_GAP) + "}",
+          "#date-line{font-size:" + px(digitH * dateSize) + ";margin-top:" + px(digitH * DATE_GAP) + "}",
+          "#date-week{font-size:" + WEEKDAY_FONT_SCALE + "em}",
+          ".date-weekday{width:" + WEEKDAY_CELL_WIDTH + "em}",
+          "#date-value{width:" + DATE_VALUE_WIDTH + "em;margin-left:" + DATE_VALUE_GAP + "em}",
           "#meridiem{font-size:" + px(digitH * MERIDIEM_SIZE) + ";top:" + px(digitH * MERIDIEM_TOP) + "}",
           filamentCss(digitH * 0.26)
         ].join("\n");
@@ -2044,28 +2116,56 @@
         var day = now.getDate();
         var key = now.getFullYear() + "-" + month + "-" + day;
         var lang = settings.language;
-        var weekday;
-        var date;
+        var weekday = (now.getDay() + 6) % 7;
+        var weekdays = DAY_ABBREVIATIONS[lang];
+        var dayText;
+        var monthText;
+        var separator;
+        var monthGroup;
 
         if (key === lastDateKey) {
           return;
         }
 
         lastDateKey = key;
-        weekday = DAY_ABBREVIATIONS[lang][now.getDay()];
-        date = settings.monthFormat === "letters" ?
-          pad(day) + " " + MONTH_ABBREVIATIONS[lang][month] : pad(day) + "." + pad(month + 1);
-        dateNode.setAttribute("aria-label", weekday + " " + date);
-        dateNode.textContent = "";
-        dateNode.appendChild(createDateGroup(weekday, "date-group date-weekday"));
-        dateNode.appendChild(createDateGroup(date, "date-group"));
+        dayText = pad(day);
+        separator = settings.monthFormat === "letters" ? " " : ".";
+        monthText = separator === "." ? pad(month + 1) : MONTH_ABBREVIATIONS[lang][month];
+        monthGroup = createDateGroup(monthText);
+        monthGroup.className += " date-month";
+
+        dateNode.setAttribute("aria-label", weekdays[weekday] + " " + dayText + separator + monthText);
+        dateValueNode.textContent = "";
+        dateValueNode.appendChild(createDateGroup(dayText));
+        dateValueNode.appendChild(createDateGlyph(separator));
+        dateValueNode.appendChild(monthGroup);
+        drawWeekdays(weekdays, weekday, lang);
       }
 
-      function createDateGroup(text, className) {
+      function drawWeekdays(weekdays, active, language) {
+        var i;
+        var day;
+
+        if (weekdayLanguage !== language) {
+          weekdayLanguage = language;
+          weekNode.textContent = "";
+          for (i = 0; i < weekdays.length; i++) {
+            day = document.createElement("span");
+            day.textContent = weekdays[i];
+            weekNode.appendChild(day);
+          }
+        }
+
+        for (i = 0; i < weekdays.length; i++) {
+          weekNode.children[i].className = i === active ? "date-weekday on" : "date-weekday";
+        }
+      }
+
+      function createDateGroup(text) {
         var group = document.createElement("span");
         var i;
 
-        group.className = className;
+        group.className = "date-group";
         for (i = 0; i < text.length; i++) {
           group.appendChild(createDateGlyph(text.charAt(i)));
         }

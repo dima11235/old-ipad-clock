@@ -198,10 +198,9 @@ function coreBrightness(png, box) {
 /*
   Brightness check.
 
-  The date line is drawn as text and the digits are drawn as boxes, so nothing
-  keeps them at the same intensity automatically - they have drifted apart twice
-  already. This measures both instead of trusting the eye. Anything beyond 15%
-  apart reads as two different displays stacked on top of each other.
+  Measure the date and the active weekday in their own tight bounds. The
+  calendar's unlit weekdays and the gap between rows are outside the sample.
+  Anything beyond 15% apart reads as two different displays.
 */
 function checkBrightness(browser) {
   var failures = 0;
@@ -225,27 +224,31 @@ function checkBrightness(browser) {
           var lit = mode === 'nixie'
             ? digit.querySelector('.num.on')
             : digit.querySelector('.seg-b');
-          var date = document.getElementById('date-line').getBoundingClientRect();
-          var box = lit.getBoundingClientRect();
+          var weekday = document.createRange();
+          weekday.selectNodeContents(document.querySelector('#date-week .date-weekday.on'));
 
           return {
-            digit: { left: box.left, top: box.top, right: box.right, bottom: box.bottom },
-            date: { left: date.left, top: date.top, right: date.right, bottom: date.bottom }
+            digit: lit.getBoundingClientRect().toJSON(),
+            date: document.getElementById('date-value').getBoundingClientRect().toJSON(),
+            weekday: weekday.getBoundingClientRect().toJSON()
           };
         }, item.mode).then(function (boxes) {
           return page.screenshot().then(function (buffer) {
             var png = PNG.sync.read(buffer);
             var digit = coreBrightness(png, boxes.digit);
             var date = coreBrightness(png, boxes.date);
-            var ratio = date / digit;
-            var wrong = ratio < 0.85 || ratio > 1.15;
+            var weekday = coreBrightness(png, boxes.weekday);
+            var dateRatio = date / digit;
+            var weekdayRatio = weekday / digit;
+            var wrong = dateRatio < 0.85 || dateRatio > 1.15 || weekdayRatio < 0.85 || weekdayRatio > 1.15;
 
             if (wrong) {
               failures++;
             }
 
             console.log('  ' + (wrong ? 'MISMATCH' : 'ok      ') + ' ' + item.mode + '/' + item.theme +
-              ': digit ' + digit + ', date ' + date + ', ratio ' + ratio.toFixed(2));
+              ': digit ' + digit + ', date ' + date + ' (' + dateRatio.toFixed(2) + ')' +
+              ', weekday ' + weekday + ' (' + weekdayRatio.toFixed(2) + ')');
 
             return page.close();
           });
