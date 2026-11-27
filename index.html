@@ -168,7 +168,8 @@
       background: currentColor;
     }
 
-    .seg:not(.on) i {
+    .seg:not(.on) i,
+    .date-pixel:not(.on) {
       color: rgba(255, 255, 255, 0.04);
     }
 
@@ -501,18 +502,18 @@
         0 0 0.37em currentColor;
     }
 
-    body.mode-led .date-pixel,
-    body.mode-vfd .date-pixel {
+    body.mode-led .date-pixel.on,
+    body.mode-vfd .date-pixel.on {
       box-shadow:
         0 0 0.05em rgba(255, 255, 255, 0.45),
         0 0 0.15em currentColor;
     }
 
-    body.mode-led .date-pixel {
+    body.mode-led .date-pixel.on {
       background-image: linear-gradient(rgba(255, 255, 255, 0.35), transparent);
     }
 
-    body.mode-vfd .date-pixel {
+    body.mode-vfd .date-pixel.on {
       background-image: linear-gradient(rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.42));
     }
 
@@ -520,7 +521,7 @@
       color: #ffb267;
     }
 
-    body.mode-nixie .date-pixel,
+    body.mode-nixie .date-pixel.on,
     body.mode-nixie #date-line .seg.on:before {
       box-shadow: 0 0 0.08em #ffc88c, 0 0 0.18em #ff9137;
     }
@@ -590,7 +591,8 @@
         0 18px 60px rgba(0, 0, 0, 0.5);
     }
 
-    body.mode-led .seg:not(.on) i {
+    body.mode-led .seg:not(.on) i,
+    body.mode-led .date-pixel:not(.on) {
       color: rgba(255, 255, 255, 0.035);
     }
 
@@ -626,7 +628,8 @@
     }
 
     /* Unlit phosphor is never black: it stays visible in the colour of the tube. */
-    body.mode-vfd .seg:not(.on) i {
+    body.mode-vfd .seg:not(.on) i,
+    body.mode-vfd .date-pixel:not(.on) {
       color: inherit;
       opacity: 0.13;
     }
@@ -680,7 +683,8 @@
         0 16px 50px rgba(0, 0, 0, 0.55);
     }
 
-    body.mode-lcd .seg:not(.on) i {
+    body.mode-lcd .seg:not(.on) i,
+    body.mode-lcd .date-pixel:not(.on) {
       color: rgba(18, 22, 16, 0.09);
     }
 
@@ -896,7 +900,8 @@
       clip-path: none;
     }
 
-    body.mode-flat .seg:not(.on) i {
+    body.mode-flat .seg:not(.on) i,
+    body.mode-flat .date-pixel:not(.on) {
       color: rgba(255, 255, 255, 0.07);
     }
 
@@ -2207,19 +2212,17 @@
         } else if (rows) {
           for (i = 0; i < rows.length; i++) {
             for (column = 0; column < 5; column++) {
-              if (rows[i] & (16 >> column)) {
-                pixel = document.createElement("i");
-                pixel.className = "date-pixel";
-                pixel.style.left = (2 + 20 * column) + "%";
-                pixel.style.top = (4 + 13.5 * i) + "%";
-                glyph.appendChild(pixel);
-              }
+              pixel = document.createElement("i");
+              pixel.className = (rows[i] & (16 >> column)) ? "date-pixel on" : "date-pixel";
+              pixel.style.left = (2 + 20 * column) + "%";
+              pixel.style.top = (4 + 13.5 * i) + "%";
+              glyph.appendChild(pixel);
             }
           }
         } else if (character === ".") {
           glyph.className += " date-separator";
           pixel = document.createElement("i");
-          pixel.className = "date-pixel";
+          pixel.className = "date-pixel on";
           glyph.appendChild(pixel);
         } else {
           glyph.className += " date-space";
