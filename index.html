@@ -499,9 +499,12 @@
       width: 0.58em;
     }
 
-    .date-separator,
-    .date-space {
+    .date-separator {
       width: 0.26em;
+    }
+
+    .date-space {
+      width: 0.30em;
     }
 
     .date-pixel {
@@ -1188,6 +1191,14 @@
       color: #fff;
     }
 
+    #update-button {
+      font-family: inherit;
+    }
+
+    #update-button:disabled {
+      opacity: 0.5;
+    }
+
     .settings-hint {
       margin-top: 2px;
       font-size: 10px;
@@ -1387,6 +1398,11 @@
       <div class="settings-hint" id="dim-hint"></div>
     </div>
 
+    <div class="settings-row">
+      <button type="button" class="option-button" id="update-button" data-i18n="updateClock">Refresh clock</button>
+      <div class="settings-hint" id="update-status" role="status"></div>
+    </div>
+
     <div class="settings-hint" data-i18n="hint">Tap the clock to change colour. Hold the clock to toggle seconds.</div>
   </div>
 
@@ -1558,6 +1574,11 @@
           off: "Off",
           auto: "Auto",
           hint: "Tap the clock to change colour. Hold the clock to toggle seconds.",
+          updateClock: "Refresh clock",
+          updateChecking: "Checking the server…",
+          updateCurrent: "The clock is up to date.",
+          updateError: "Could not update. Check the internet connection.",
+          updateLocal: "Open the clock website to update.",
           statusLanguage: "language: ",
           statusDisplay: "display: ",
           statusTheme: "colour: ",
@@ -1613,6 +1634,11 @@
           off: "Выкл",
           auto: "Авто",
           hint: "Тап по часам меняет цвет. Долгое нажатие включает или выключает секунды.",
+          updateClock: "Обновить часы",
+          updateChecking: "Проверяем обновление…",
+          updateCurrent: "Установлена актуальная версия.",
+          updateError: "Обновление не удалось. Проверьте подключение к интернету.",
+          updateLocal: "Для обновления откройте сайт часов.",
           statusLanguage: "язык: ",
           statusDisplay: "индикатор: ",
           statusTheme: "цвет: ",
@@ -1663,6 +1689,8 @@
       var statusNode = document.getElementById("status");
       var settingsButton = document.getElementById("settings-button");
       var settingsPanel = document.getElementById("settings-panel");
+      var updateButton = document.getElementById("update-button");
+      var updateStatus = document.getElementById("update-status");
       var dimRange = document.getElementById("dim-range");
       var dimValue = document.getElementById("dim-value");
       var dimHint = document.getElementById("dim-hint");
@@ -1678,6 +1706,7 @@
       var holdX = 0;
       var holdY = 0;
       var resizeTimer = null;
+      var appCacheUpdateTimer = null;
       var lastDateKey = "";
       var lastDimState = null;
       var lastTickAt = 0;
@@ -2952,16 +2981,100 @@
         - the Wake Lock API (iOS 16.4+) keeps the screen on; older iPads simply
           do not have it and rely on the device auto-lock setting.
       */
-      function setupOffline() {
-        if (window.applicationCache) {
-          window.applicationCache.addEventListener("updateready", function () {
-            try {
-              window.applicationCache.swapCache();
-              window.location.reload();
-            } catch (error) {
-              /* Nothing to do: the next launch will pick the new cache up. */
+      function finishClockUpdate(key) {
+        clearTimeout(appCacheUpdateTimer);
+        appCacheUpdateTimer = null;
+        updateButton.disabled = false;
+        updateStatus.textContent = label(key);
+      }
+
+      function applyApplicationCache() {
+        try {
+          window.applicationCache.swapCache();
+          window.location.reload();
+        } catch (error) {
+          if (appCacheUpdateTimer !== null) {
+            finishClockUpdate("updateError");
+          }
+        }
+      }
+
+      function refreshClock() {
+        var cache = window.applicationCache;
+        var location = window.location;
+        var updateUrl;
+        var request;
+
+        if (updateButton.disabled) {
+          return;
+        }
+        if (location.protocol !== "http:" && location.protocol !== "https:") {
+          finishClockUpdate("updateLocal");
+          return;
+        }
+        if (navigator.onLine === false) {
+          finishClockUpdate("updateError");
+          return;
+        }
+
+        updateButton.disabled = true;
+        updateStatus.textContent = label("updateChecking");
+
+        if (cache && cache.status >= cache.IDLE && cache.status <= cache.UPDATEREADY) {
+          appCacheUpdateTimer = setTimeout(function () { finishClockUpdate("updateError"); }, 15000);
+          try {
+            if (cache.status === cache.UPDATEREADY) {
+              applyApplicationCache();
+            } else if (cache.status === cache.IDLE) {
+              cache.update();
             }
-          }, false);
+          } catch (error) {
+            finishClockUpdate("updateError");
+          }
+          return;
+        }
+
+        /* A fresh URL also works before a service worker has taken control. */
+        updateUrl = location.pathname + "?clock-update=" + new Date().getTime();
+        request = new XMLHttpRequest();
+        request.open("GET", updateUrl, true);
+        request.timeout = 15000;
+        request.onload = function () {
+          if (request.status === 204) {
+            /* The worker has saved the new page under the regular URLs. */
+            location.replace(location.pathname + location.hash);
+          } else if (request.status === 200 && /^text\/html\b/i.test(request.getResponseHeader("Content-Type") || "")) {
+            location.replace(updateUrl + location.hash);
+          } else {
+            finishClockUpdate("updateError");
+          }
+        };
+        request.onerror = request.ontimeout = function () { finishClockUpdate("updateError"); };
+        request.send(null);
+      }
+
+      function setupOffline() {
+        var cache = window.applicationCache;
+        var unchanged = function () {
+          if (appCacheUpdateTimer !== null) {
+            finishClockUpdate("updateCurrent");
+          }
+        };
+        var failed = function () {
+          if (appCacheUpdateTimer !== null) {
+            finishClockUpdate("updateError");
+          }
+        };
+
+        if (cache) {
+          cache.addEventListener("updateready", applyApplicationCache, false);
+          cache.addEventListener("noupdate", unchanged, false);
+          cache.addEventListener("cached", unchanged, false);
+          cache.addEventListener("error", failed, false);
+          cache.addEventListener("obsolete", failed, false);
+          if (cache.status === cache.UPDATEREADY) {
+            applyApplicationCache();
+          }
         }
 
         if (navigator.serviceWorker && window.location.protocol.indexOf("http") === 0) {
@@ -3070,6 +3183,10 @@
       startTimers();
 
       settingsPanel.onclick = handleSettingsClick;
+      updateButton.onclick = function (event) {
+        event.stopPropagation();
+        refreshClock();
+      };
       dimRange.oninput = changeNightBrightness;
       dimRange.onchange = saveNightBrightness;
       settingsPanel.ontouchstart = function (event) {
