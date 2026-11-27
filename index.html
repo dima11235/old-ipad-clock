@@ -397,14 +397,93 @@
 
     #date-line {
       display: none;
-      font-weight: bold;
-      letter-spacing: 0.16em;
-      text-transform: uppercase;
-      color: currentColor;
+      height: 1em;
+      line-height: 1;
+      white-space: nowrap;
     }
 
     body.show-date #date-line {
       display: block;
+    }
+
+    .date-group,
+    .date-glyph {
+      display: inline-block;
+      vertical-align: top;
+      height: 1em;
+    }
+
+    .date-weekday {
+      margin-right: 0.36em;
+    }
+
+    .date-glyph {
+      position: relative;
+      width: 0.66em;
+    }
+
+    .date-glyph + .date-glyph {
+      margin-left: 0.07em;
+    }
+
+    .date-digit {
+      width: 0.58em;
+    }
+
+    .date-separator {
+      width: 0.16em;
+    }
+
+    .date-space {
+      width: 0.20em;
+    }
+
+    .date-pixel {
+      position: absolute;
+      width: 0.11em;
+      height: 0.11em;
+      background: currentColor;
+    }
+
+    .date-separator .date-pixel {
+      left: 0.025em;
+      bottom: 0.03em;
+      border-radius: 50%;
+    }
+
+    body.mode-lcd #date-line {
+      color: rgba(15, 19, 14, 0.9);
+    }
+
+    body.mode-led .date-pixel,
+    body.mode-led #date-line .seg.on:before {
+      box-shadow: 0 0 0.13em currentColor;
+    }
+
+    body.mode-led .date-pixel {
+      background-image: linear-gradient(rgba(255, 255, 255, 0.35), transparent);
+    }
+
+    body.mode-vfd .date-pixel,
+    body.mode-vfd #date-line .seg.on:before {
+      box-shadow: 0 0 0.15em currentColor;
+    }
+
+    body.mode-vfd .date-pixel {
+      background-image: linear-gradient(rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.42));
+    }
+
+    body.mode-nixie #date-line {
+      color: #ffb267;
+    }
+
+    body.mode-nixie #date-line .seg.on i {
+      background: currentColor;
+    }
+
+    body.mode-nixie .date-pixel,
+    body.mode-nixie #date-line .seg.on:before {
+      box-shadow: 0 0 0.16em #ff9137;
     }
 
     /* top comes from applyMetrics(), like every other size that depends on the digit. */
@@ -547,7 +626,6 @@
       opacity: 0.09;
     }
 
-    body.mode-lcd #date-line,
     body.mode-lcd #meridiem {
       color: rgba(15, 19, 14, 0.86);
       text-shadow: none;
@@ -717,7 +795,6 @@
       The glyphs go back to a normal weight here: bold strokes plus an outline
       make the wire look like a pipe.
     */
-    body.mode-nixie #date-line,
     body.mode-nixie #meridiem {
       font-weight: normal;
       color: rgba(255, 128, 40, 0.42);
@@ -747,11 +824,6 @@
 
     body.mode-flat .seg.on i {
       background: currentColor;
-    }
-
-    body.mode-flat #date-line,
-    body.mode-flat #meridiem {
-      text-shadow: none;
     }
 
     /* ---------- colour themes ---------- */
@@ -816,13 +888,8 @@
     }
 
     /*
-      A lit LED segment is the theme colour with a white gradient washed over it,
-      so plain coloured text next to it comes out too dark - on red, where the
-      colour itself is dim, by a quarter. The text is therefore stacked the same
-      way: an opaque coloured glyph (the zero blur shadow), a light white wash
-      over it, and the halo around it.
+      Give the AM/PM text the same white wash and halo as a lit LED segment.
     */
-    body.mode-led #date-line,
     body.mode-led #meridiem {
       -webkit-text-fill-color: rgba(255, 255, 255, 0.28);
       text-shadow:
@@ -831,21 +898,7 @@
         0 0 26px currentColor;
     }
 
-    /*
-      On a VFD the phosphor burns almost white and only the halo carries the
-      colour, so the text has to be built the same way as a lit segment: a white
-      glyph with a coloured bloom. text-fill-color paints the glyph while color
-      stays the theme colour, which is what currentColor in the shadow picks up.
-    */
-    /*
-      The text is built out of the same three parts as a lit segment, in the same
-      order, so that it lands at the same brightness: a solid coloured glyph
-      (the zero blur shadow), a half transparent white wash over it, and a
-      coloured bloom around it. Dimming the parts separately, or leaning on
-      opacity, either drains the colour out of the text or pushes it off the
-      brightness of the digits it sits under.
-    */
-    body.mode-vfd #date-line,
+    /* VFD phosphor burns nearly white, with the theme colour in the halo. */
     body.mode-vfd #meridiem {
       -webkit-text-fill-color: rgba(255, 255, 255, 0.5);
       text-shadow:
@@ -1113,7 +1166,7 @@
         <!-- #time is filled by buildDisplay(), which also moves #meridiem into it. -->
         <div id="time"></div>
         <div class="filaments"></div>
-        <div id="date-line"></div>
+        <div id="date-line" role="img"></div>
         <div id="meridiem">AM</div>
       </div>
     </div>
@@ -1288,8 +1341,8 @@
         beside it kept 20px of margin. This puts the two back on comparable footing.
       */
       var MERIDIEM_TOP = 0.07;
-      var DATE_SIZE = 0.19;       /* date font size */
-      var DATE_GAP = 0.12;        /* space between the digits and the date line */
+      var DATE_SIZE = 0.16;       /* calendar glyph height */
+      var DATE_GAP = 0.075;       /* space between the digits and the date line */
       var MIN_DIGIT = 44;
       var MAX_DIGIT = 700;
 
@@ -1306,6 +1359,31 @@
       var MONTH_ABBREVIATIONS = {
         en: ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"],
         ru: ["ЯНВ", "ФЕВ", "МАР", "АПР", "МАЙ", "ИЮН", "ИЮЛ", "АВГ", "СЕН", "ОКТ", "НОЯ", "ДЕК"]
+      };
+
+      /* Five columns by seven rows, with the leftmost pixel in bit 4. */
+      var DATE_LETTERS = {
+        A: [14, 17, 17, 31, 17, 17, 17], B: [30, 17, 17, 30, 17, 17, 30],
+        C: [14, 17, 16, 16, 16, 17, 14], D: [30, 17, 17, 17, 17, 17, 30],
+        E: [31, 16, 16, 30, 16, 16, 31], F: [31, 16, 16, 30, 16, 16, 16],
+        G: [14, 17, 16, 23, 17, 17, 15], H: [17, 17, 17, 31, 17, 17, 17],
+        J: [7, 2, 2, 2, 2, 18, 12], L: [16, 16, 16, 16, 16, 16, 31],
+        M: [17, 27, 21, 21, 17, 17, 17], N: [17, 25, 21, 19, 17, 17, 17],
+        O: [14, 17, 17, 17, 17, 17, 14], P: [30, 17, 17, 30, 16, 16, 16],
+        R: [30, 17, 17, 30, 20, 18, 17], S: [15, 16, 16, 14, 1, 1, 30],
+        T: [31, 4, 4, 4, 4, 4, 4], U: [17, 17, 17, 17, 17, 17, 14],
+        V: [17, 17, 17, 17, 17, 10, 4], W: [17, 17, 17, 21, 21, 27, 17],
+        Y: [17, 17, 10, 4, 4, 4, 4],
+        Б: [31, 16, 16, 30, 17, 17, 30], Г: [31, 16, 16, 16, 16, 16, 16],
+        Д: [14, 10, 10, 10, 10, 31, 17], И: [17, 17, 19, 21, 25, 17, 17],
+        Й: [10, 4, 17, 19, 21, 25, 17], К: [17, 18, 20, 24, 20, 18, 17],
+        Л: [7, 9, 9, 9, 9, 9, 17], П: [31, 17, 17, 17, 17, 17, 17],
+        Ф: [4, 14, 21, 21, 21, 14, 4], Ч: [17, 17, 17, 15, 1, 1, 1],
+        Ю: [18, 21, 21, 29, 21, 21, 18], Я: [15, 17, 17, 15, 5, 9, 17]
+      };
+
+      var DATE_LETTER_ALIASES = {
+        А: "A", В: "B", Е: "E", М: "M", Н: "H", О: "O", Р: "P", С: "C", Т: "T"
       };
 
       var LABELS = {
@@ -1637,7 +1715,6 @@
         var record = { node: cell, segments: {}, numerals: [], value: null };
         var i;
         var seg;
-        var inner;
         var num;
 
         cell.className = "cell digit";
@@ -1654,10 +1731,7 @@
         }
 
         for (i = 0; i < SEGMENTS.length; i++) {
-          seg = document.createElement("span");
-          inner = document.createElement("i");
-          seg.className = segmentClass(SEGMENTS[i]);
-          seg.appendChild(inner);
+          seg = createSegment(SEGMENTS[i], false);
           segments.appendChild(seg);
           record.segments[SEGMENTS[i]] = seg;
         }
@@ -1673,6 +1747,13 @@
       function segmentClass(name) {
         var horizontal = name === "a" || name === "d" || name === "g";
         return "seg seg-" + name + " " + (horizontal ? "seg-h" : "seg-v");
+      }
+
+      function createSegment(name, lit) {
+        var node = document.createElement("span");
+        node.className = segmentClass(name) + (lit ? " on" : "");
+        node.appendChild(document.createElement("i"));
+        return node;
       }
 
       function createColonCell() {
@@ -1758,7 +1839,7 @@
         }
 
         if (settings.showDate) {
-          unitsH += DATE_GAP + DATE_SIZE * 1.4;
+          unitsH += DATE_GAP + DATE_SIZE;
         }
 
         digitH = Math.min(availableW / unitsW, availableH / unitsH);
@@ -1961,6 +2042,7 @@
         var day = now.getDate();
         var key = now.getFullYear() + "-" + month + "-" + day;
         var lang = settings.language;
+        var weekday;
         var date;
 
         if (key === lastDateKey) {
@@ -1968,9 +2050,62 @@
         }
 
         lastDateKey = key;
+        weekday = DAY_ABBREVIATIONS[lang][now.getDay()];
         date = settings.monthFormat === "letters" ?
           pad(day) + " " + MONTH_ABBREVIATIONS[lang][month] : pad(day) + "." + pad(month + 1);
-        dateNode.textContent = DAY_ABBREVIATIONS[lang][now.getDay()] + " " + date;
+        dateNode.setAttribute("aria-label", weekday + " " + date);
+        dateNode.textContent = "";
+        dateNode.appendChild(createDateGroup(weekday, "date-group date-weekday"));
+        dateNode.appendChild(createDateGroup(date, "date-group"));
+      }
+
+      function createDateGroup(text, className) {
+        var group = document.createElement("span");
+        var i;
+
+        group.className = className;
+        for (i = 0; i < text.length; i++) {
+          group.appendChild(createDateGlyph(text.charAt(i)));
+        }
+        return group;
+      }
+
+      function createDateGlyph(character) {
+        var glyph = document.createElement("span");
+        var lit = SEGMENT_MAP[character];
+        var rows = DATE_LETTERS[DATE_LETTER_ALIASES[character] || character];
+        var i;
+        var column;
+        var pixel;
+
+        glyph.className = "date-glyph";
+        if (lit) {
+          glyph.className += " date-digit";
+          for (i = 0; i < SEGMENTS.length; i++) {
+            glyph.appendChild(createSegment(SEGMENTS[i], lit.indexOf(SEGMENTS[i]) !== -1));
+          }
+        } else if (rows) {
+          for (i = 0; i < rows.length; i++) {
+            for (column = 0; column < 5; column++) {
+              if (rows[i] & (16 >> column)) {
+                pixel = document.createElement("i");
+                pixel.className = "date-pixel";
+                pixel.style.left = (2 + 20 * column) + "%";
+                pixel.style.top = (4 + 13.5 * i) + "%";
+                glyph.appendChild(pixel);
+              }
+            }
+          }
+        } else if (character === ".") {
+          glyph.className += " date-separator";
+          pixel = document.createElement("i");
+          pixel.className = "date-pixel";
+          glyph.appendChild(pixel);
+        } else {
+          glyph.className += " date-space";
+        }
+
+        return glyph;
       }
 
       /* ---------------------------------------------------------------
