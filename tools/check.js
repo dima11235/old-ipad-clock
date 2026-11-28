@@ -111,15 +111,16 @@ function checkFit(browser) {
         chain = chain.then(function () {
           return open(browser, device, settingsFor(mode, shape.settings)).then(function (page) {
             return page.evaluate(function () {
-              var months = document.getElementById('date-months');
-              var week = document.getElementById('date-week');
+              var retroColumns = Array.from(document.querySelectorAll('.retro-date-labels'));
 
               function measure() {
                 var box = document.getElementById('clock').getBoundingClientRect();
                 var digit = document.querySelector('.digit').getBoundingClientRect();
-                var labelsRight = document.getElementById('date-labels').getBoundingClientRect().right;
-                var monthsOverflow = [week, months].some(function (row) {
-                  return row.lastElementChild && row.lastElementChild.getBoundingClientRect().right > labelsRight + 1;
+                var labelsOverflow = retroColumns.some(function (column) {
+                  var columnRight = column.getBoundingClientRect().right;
+                  return Array.from(column.children).some(function (row) {
+                    return row.lastElementChild && row.lastElementChild.getBoundingClientRect().right > columnRight + 1;
+                  });
                 });
 
                 return {
@@ -131,15 +132,15 @@ function checkFit(browser) {
                   viewportHeight: window.innerHeight,
                   widthUsed: box.width / window.innerWidth,
                   digitHeight: Math.round(digit.height),
-                  monthsOverflow: monthsOverflow
+                  labelsOverflow: labelsOverflow
                 };
               }
 
-              if (!months.lastElementChild) {
+              if (!document.body.classList.contains('date-retro')) {
                 return measure();
               }
 
-              document.getElementById('date-labels').style.fontFamily = 'Arial, sans-serif';
+              retroColumns.forEach(function (column) { column.style.fontFamily = 'Arial, sans-serif'; });
               window.dispatchEvent(new Event('resize'));
               return new Promise(function (resolve) {
                 setTimeout(function () { resolve(measure()); }, 175);
@@ -149,14 +150,14 @@ function checkFit(browser) {
                 info.right > info.viewportWidth + 1 || info.bottom > info.viewportHeight + 1;
               var wastesWidth = info.widthUsed < 0.9;
 
-              if (overflows || wastesWidth || info.monthsOverflow) {
+              if (overflows || wastesWidth || info.labelsOverflow) {
                 problems.push({
                   device: device.name,
                   mode: mode,
                   shape: shape.name,
                   digitHeight: info.digitHeight,
                   widthUsed: Math.round(info.widthUsed * 100) + '%',
-                  reason: info.monthsOverflow ? 'months overflow the calendar' :
+                  reason: info.labelsOverflow ? 'labels overflow the calendar' :
                     overflows ? 'overflows the screen' : 'leaves the screen half empty'
                 });
               }
