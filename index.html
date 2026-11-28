@@ -426,15 +426,18 @@
       line-height: 0.77;
     }
 
-    #date-week,
-    .retro-date-row {
+    .date-label-row {
       display: -webkit-flex;
       display: flex;
     }
 
-    .retro-date-labels,
-    body.date-retro #date-week {
+    #date-week {
       display: none;
+      letter-spacing: 0;
+    }
+
+    body.date-numeric #date-week {
+      display: block;
     }
 
     .date-label {
@@ -446,19 +449,27 @@
       margin-left: 0.14em;
     }
 
-    body.date-retro .retro-date-labels {
-      display: block;
+    .retro-date-labels {
+      position: absolute;
+      top: 0;
+      left: 0;
+      visibility: hidden;
       letter-spacing: 0;
     }
 
-    .retro-date-row {
+    body.date-retro .retro-date-labels {
+      position: static;
+      visibility: visible;
+    }
+
+    .date-label-row {
       -webkit-justify-content: space-between;
       justify-content: space-between;
     }
 
     #retro-week .date-label,
-    #retro-week .retro-date-row:nth-child(2):after,
-    #retro-week .retro-date-row:nth-child(3):before {
+    #retro-week .date-label-row:nth-child(2):after,
+    #retro-week .date-label-row:nth-child(3):before {
       -webkit-flex: 1 1 0px;
       flex: 1 1 0px;
       min-width: 0;
@@ -469,8 +480,8 @@
       text-align: center;
     }
 
-    #retro-week .retro-date-row:nth-child(2):after,
-    #retro-week .retro-date-row:nth-child(3):before {
+    #retro-week .date-label-row:nth-child(2):after,
+    #retro-week .date-label-row:nth-child(3):before {
       content: "";
     }
 
@@ -482,9 +493,9 @@
       height: 1em;
     }
 
-    .date-month {
-      width: 2.12em;
-      text-align: left;
+    #date-value > * {
+      -webkit-flex: 0 0 auto;
+      flex: 0 0 auto;
     }
 
     .date-group,
@@ -1294,17 +1305,20 @@
         <div id="time"></div>
         <div class="filaments"></div>
         <div id="date-line" role="img">
-          <div id="date-week" class="date-labels"></div>
+          <div id="date-week" class="date-labels">
+            <div class="date-label-row"></div>
+            <div class="date-label-row"></div>
+          </div>
           <div id="retro-week" class="date-labels retro-date-labels">
-            <div class="retro-date-row"></div>
-            <div class="retro-date-row"></div>
-            <div class="retro-date-row"></div>
+            <div class="date-label-row"></div>
+            <div class="date-label-row"></div>
+            <div class="date-label-row"></div>
           </div>
           <div id="date-value"></div>
           <div id="retro-months" class="date-labels retro-date-labels">
-            <div class="retro-date-row"></div>
-            <div class="retro-date-row"></div>
-            <div class="retro-date-row"></div>
+            <div class="date-label-row"></div>
+            <div class="date-label-row"></div>
+            <div class="date-label-row"></div>
           </div>
         </div>
         <div id="meridiem">AM</div>
@@ -1489,22 +1503,19 @@
       var MERIDIEM_TOP = 0.07;
       var DATE_SIZE = 0.125;     /* base calendar size relative to the main digit */
       var DATE_GAP = 0.075;      /* space below the time */
-      var DATE_INSET = 0.09;     /* minimum space at each end of the calendar */
-      var WEEKDAY_FONT_SCALE = 1.30; /* match the cap height to the base calendar size */
-      var WEEKDAY_ROW_WIDTH = 11.5; /* allow for seven labels and six gaps in the fallback fonts */
-      var DATE_VALUE_SCALE = 2;      /* enlarge the day and month independently of the weekdays */
-      var DATE_VALUE_WIDTH = 3.65;    /* em for the day, separator and three-letter month */
-      var DATE_VALUE_GAP = 1.35;      /* em between the weekdays and date */
-      var DATE_ROW_WIDTH = WEEKDAY_ROW_WIDTH * WEEKDAY_FONT_SCALE + DATE_VALUE_WIDTH * DATE_VALUE_SCALE + DATE_VALUE_GAP;
-      var RETRO_DAY_WIDTH = 1.24;     /* em for the two day digits */
-      var RETRO_DATE_INSET = 0.035;  /* outer gutters relative to the main digits */
+      var DATE_INSET = 0.035;    /* outer gutters relative to the main digits */
+      var DATE_BASE_INSET = 0.09; /* inset used to establish the base calendar scale */
+      var DATE_BASE_WIDTH = 23.6; /* reference width in base calendar units */
+      var DATE_VALUE_WIDTHS = { numeric: 2.73, letters: 5.35, retro: 1.24 }; /* widths of the glyph groups in em */
       var RETRO_DATE_GAP = 0.6;      /* em between the number and the labels */
       var RETRO_LABEL_SCALE = 1.85;   /* maximum label size relative to the base calendar size */
       var RETRO_LABEL_LINE_HEIGHT = 0.95;
       var RETRO_LABEL_GAP = 0.18;    /* minimum horizontal gap in label em */
       var RETRO_ROW_GAP = 0.19;      /* leave room for the breve in МАЙ */
       var RETRO_ROWS_HEIGHT = 3 * RETRO_LABEL_LINE_HEIGHT + 2 * RETRO_ROW_GAP;
+      var NUMERIC_WEEK_HEIGHT = 2 * RETRO_LABEL_LINE_HEIGHT + RETRO_ROW_GAP;
       var RETRO_LABEL_PAD = 0.25;     /* allow for rounding when the measured font is scaled */
+      var NUMERIC_WEEK_ROW_SIZES = [4, 3];
       var RETRO_WEEK_ROW_SIZES = [3, 2, 2];
       var RETRO_MONTH_ROW_SIZES = [4, 4, 4];
       var MIN_DIGIT = 44;
@@ -1699,7 +1710,8 @@
       var timeNode = document.getElementById("time");
       var dateNode = document.getElementById("date-line");
       var dateValueNode = document.getElementById("date-value");
-      var weekLabels = calendarLabelStrip(document.getElementById("date-week"));
+      var numericWeekNode = document.getElementById("date-week");
+      var numericWeekRows = Array.prototype.map.call(numericWeekNode.children, calendarLabelStrip);
       var retroWeekNode = document.getElementById("retro-week");
       var retroMonthNode = document.getElementById("retro-months");
       var retroWeekRows = Array.prototype.map.call(retroWeekNode.children, calendarLabelStrip);
@@ -2004,15 +2016,19 @@
         var digitH;
         var calendarSize;
         var timeWidth;
-        var labelScale = WEEKDAY_FONT_SCALE;
-        var dateScale = DATE_VALUE_SCALE;
+        var labelScale = 1;
+        var weekdayScale = 1;
+        var dateScale = 0;
+        var dateWidth = DATE_VALUE_WIDTHS[settings.monthFormat];
         var retroDate = settings.monthFormat === "retro";
-        var valueGap = retroDate ? RETRO_DATE_GAP : DATE_VALUE_GAP;
-        var retroWidth;
+        var numericDate = settings.monthFormat === "numeric";
+        var calendarWidth;
         var retroFontSize;
         var retroWeekWidth = 0;
         var retroMonthWidth = 0;
-        var valueGapPx;
+        var weekdayFontSize;
+        var weekdayWidth = 0;
+        var valueGapPx = "0";
         var css;
 
         lastViewport = viewportW + "x" + viewportH;
@@ -2035,23 +2051,32 @@
         }
 
         timeWidth = unitsW - 2 * box.padX;
-        calendarSize = Math.min(DATE_SIZE, (timeWidth - 2 * DATE_INSET) / DATE_ROW_WIDTH);
-        if (retroDate && settings.showDate) {
-          retroWidth = (timeWidth - 2 * RETRO_DATE_INSET) / calendarSize - 2 * valueGap;
+        calendarSize = Math.min(DATE_SIZE, (timeWidth - 2 * DATE_BASE_INSET) / DATE_BASE_WIDTH);
+        calendarWidth = (timeWidth - 2 * DATE_INSET) / calendarSize;
+        if (settings.showDate) {
           retroFontSize = parseFloat(window.getComputedStyle(retroWeekNode).fontSize);
           retroWeekWidth = retroWeekColumnWidth(retroFontSize);
-          retroMonthWidth = retroColumnWidth(retroMonthRows, retroFontSize);
-          labelScale = Math.min(RETRO_LABEL_SCALE, retroWidth /
-            (retroWeekWidth + RETRO_DAY_WIDTH * RETRO_ROWS_HEIGHT + retroMonthWidth));
+          retroMonthWidth = calendarColumnWidth(retroMonthRows, retroFontSize);
+          labelScale = Math.min(RETRO_LABEL_SCALE, (calendarWidth - 2 * RETRO_DATE_GAP) /
+            (retroWeekWidth + DATE_VALUE_WIDTHS.retro * RETRO_ROWS_HEIGHT + retroMonthWidth));
           dateScale = RETRO_ROWS_HEIGHT * labelScale;
-        }
-        if (settings.showDate) {
+          if (numericDate) {
+            weekdayFontSize = parseFloat(window.getComputedStyle(numericWeekNode).fontSize);
+            weekdayWidth = calendarColumnWidth(numericWeekRows, weekdayFontSize);
+            dateScale = Math.min(dateScale, (calendarWidth - RETRO_DATE_GAP) /
+              (dateWidth + weekdayWidth / NUMERIC_WEEK_HEIGHT));
+            weekdayScale = dateScale / NUMERIC_WEEK_HEIGHT;
+          } else if (!retroDate) {
+            dateScale = Math.min(dateScale, calendarWidth / dateWidth);
+          }
           unitsH += DATE_GAP + calendarSize * dateScale;
         }
 
         digitH = Math.min(availableW / unitsW, availableH / unitsH);
         digitH = Math.max(MIN_DIGIT, Math.min(MAX_DIGIT, Math.floor(digitH)));
-        valueGapPx = px(digitH * calendarSize * valueGap);
+        if (retroDate || numericDate) {
+          valueGapPx = px(digitH * calendarSize * RETRO_DATE_GAP);
+        }
 
         css = [
           ".cell{height:" + px(digitH) + "}",
@@ -2066,13 +2091,14 @@
           ".seconds .num{font-size:" + px(digitH * SECONDS_SCALE * 0.82) + ";line-height:" + px(digitH * SECONDS_SCALE) + "}",
           ".frame{padding:" + px(digitH * box.padY) + " " + px(digitH * box.padX) + ";border-radius:" + px(digitH * box.radius) + "}",
           "#date-line{font-size:" + px(digitH * calendarSize) + ";margin-top:" + px(digitH * DATE_GAP) + "}",
-          ".date-labels{font-size:" + labelScale + "em}",
+          "#date-week{font-size:" + weekdayScale + "em;width:" + weekdayWidth +
+            "em;line-height:" + RETRO_LABEL_LINE_HEIGHT + "}",
+          ".retro-date-labels{font-size:" + labelScale + "em;line-height:" + RETRO_LABEL_LINE_HEIGHT + "}",
           "#retro-week{width:" + retroWeekWidth + "em}",
           "#retro-months{width:" + retroMonthWidth + "em}",
-          ".retro-date-labels{line-height:" + RETRO_LABEL_LINE_HEIGHT + "}",
-          "#retro-months .date-label+.date-label{margin-left:" + RETRO_LABEL_GAP + "em}",
-          ".retro-date-row+.retro-date-row{margin-top:" + RETRO_ROW_GAP + "em}",
-          "#date-value{font-size:" + dateScale + "em;width:" + (retroDate ? RETRO_DAY_WIDTH : DATE_VALUE_WIDTH) + "em;" +
+          "#date-week .date-label+.date-label,#retro-months .date-label+.date-label{margin-left:" + RETRO_LABEL_GAP + "em}",
+          ".date-label-row+.date-label-row{margin-top:" + RETRO_ROW_GAP + "em}",
+          "#date-value{font-size:" + dateScale + "em;width:" + dateWidth + "em;" +
             "margin-left:" + valueGapPx + ";margin-right:" + (retroDate ? valueGapPx : "0") + "}",
           "#meridiem{font-size:" + px(digitH * MERIDIEM_SIZE) + ";top:" + px(digitH * MERIDIEM_TOP) + "}",
           filamentCss(digitH * 0.26)
@@ -2096,7 +2122,7 @@
         return 3 * widest + 2 * RETRO_LABEL_GAP + RETRO_LABEL_PAD;
       }
 
-      function retroColumnWidth(rows, fontSize) {
+      function calendarColumnWidth(rows, fontSize) {
         var gap = RETRO_LABEL_GAP;
         var widestRow = 0;
         var i;
@@ -2174,6 +2200,7 @@
         setFlag("weight-bold", settings.weight === "bold");
         setFlag("show-seconds", settings.showSeconds);
         setFlag("show-date", settings.showDate);
+        setFlag("date-numeric", settings.monthFormat === "numeric");
         setFlag("date-retro", settings.monthFormat === "retro");
         setFlag("hour12", settings.hour12);
         applyLanguage();
@@ -2299,7 +2326,7 @@
         var dayText;
         var monthText;
         var separator;
-        var monthGroup;
+        var format = settings.monthFormat;
 
         if (key === lastDateKey) {
           return;
@@ -2307,21 +2334,23 @@
 
         lastDateKey = key;
         dayText = pad(day);
-        separator = settings.monthFormat === "numeric" ? "." : " ";
+        separator = format === "numeric" ? "." : " ";
         monthText = separator === "." ? pad(month + 1) : months[month];
 
         dateNode.setAttribute("aria-label", weekdays[weekday] + " " + dayText + separator + monthText);
         dateValueNode.textContent = "";
+        drawCalendarColumn(retroWeekRows, RETRO_WEEK_ROW_SIZES, weekdays, weekday, lang);
+        drawCalendarColumn(retroMonthRows, RETRO_MONTH_ROW_SIZES, months, month, lang);
+        if (format === "numeric") {
+          drawCalendarColumn(numericWeekRows, NUMERIC_WEEK_ROW_SIZES, weekdays, weekday, lang);
+        } else if (format === "letters") {
+          dateValueNode.appendChild(createDateGroup(weekdays[weekday]));
+          dateValueNode.appendChild(createDateGlyph(" "));
+        }
         dateValueNode.appendChild(createDateGroup(dayText));
-        if (settings.monthFormat === "retro") {
-          drawRetroColumn(retroWeekRows, RETRO_WEEK_ROW_SIZES, weekdays, weekday, lang);
-          drawRetroColumn(retroMonthRows, RETRO_MONTH_ROW_SIZES, months, month, lang);
-        } else {
-          drawCalendarLabels(weekLabels, weekdays, weekday, lang);
-          monthGroup = createDateGroup(monthText);
-          monthGroup.className += " date-month";
+        if (format !== "retro") {
           dateValueNode.appendChild(createDateGlyph(separator));
-          dateValueNode.appendChild(monthGroup);
+          dateValueNode.appendChild(createDateGroup(monthText));
         }
       }
 
@@ -2329,7 +2358,7 @@
         return { row: row, nodes: [], language: "" };
       }
 
-      function drawRetroColumn(rows, rowSizes, labels, active, language) {
+      function drawCalendarColumn(rows, rowSizes, labels, active, language) {
         var start = 0;
         var i;
         var end;

@@ -45,7 +45,8 @@ var SHAPES = [
   { name: 'plain', settings: {} },
   { name: 'seconds-date', settings: { showSeconds: true, showDate: true } },
   { name: 'seconds-date-12h-bold', settings: { showSeconds: true, showDate: true, hour12: true, weight: 'bold', language: 'ru' } },
-  { name: 'retro-date', settings: { showDate: true, monthFormat: 'retro', language: 'ru' } }
+  { name: 'retro-date', settings: { showDate: true, monthFormat: 'retro', language: 'ru' } },
+  { name: 'letter-date', settings: { showDate: true, monthFormat: 'letters', language: 'ru' } }
 ];
 
 /*
@@ -111,15 +112,21 @@ function checkFit(browser) {
         chain = chain.then(function () {
           return open(browser, device, settingsFor(mode, shape.settings)).then(function (page) {
             return page.evaluate(function () {
-              var retroColumns = Array.from(document.querySelectorAll('.retro-date-labels'));
+              var calendarColumns = Array.from(document.querySelectorAll('#date-week, .retro-date-labels'));
+              var dateValue = document.getElementById('date-value');
+
+              function rowOverflows(row, right) {
+                return row.lastElementChild && row.lastElementChild.getBoundingClientRect().right > right + 1;
+              }
 
               function measure() {
                 var box = document.getElementById('clock').getBoundingClientRect();
                 var digit = document.querySelector('.digit').getBoundingClientRect();
-                var labelsOverflow = retroColumns.some(function (column) {
+                var labelsOverflow = rowOverflows(dateValue, dateValue.getBoundingClientRect().right) ||
+                  calendarColumns.some(function (column) {
                   var columnRight = column.getBoundingClientRect().right;
                   return Array.from(column.children).some(function (row) {
-                    return row.lastElementChild && row.lastElementChild.getBoundingClientRect().right > columnRight + 1;
+                    return rowOverflows(row, columnRight);
                   });
                 });
 
@@ -136,11 +143,11 @@ function checkFit(browser) {
                 };
               }
 
-              if (!document.body.classList.contains('date-retro')) {
+              if (!document.body.classList.contains('show-date')) {
                 return measure();
               }
 
-              retroColumns.forEach(function (column) { column.style.fontFamily = 'Arial, sans-serif'; });
+              calendarColumns.forEach(function (column) { column.style.fontFamily = 'Arial, sans-serif'; });
               window.dispatchEvent(new Event('resize'));
               return new Promise(function (resolve) {
                 setTimeout(function () { resolve(measure()); }, 175);
@@ -288,7 +295,7 @@ function checkBrightness(browser) {
   });
 }
 
-/* Capture each mode with no calendar, the standard date, and the retro calendar. */
+/* Capture each mode with no calendar and with each calendar format. */
 function takeShots(browser) {
   var chain = Promise.resolve();
   var today = new Date();
@@ -300,7 +307,7 @@ function takeShots(browser) {
   }
 
   MODES.forEach(function (mode) {
-    [SHAPES[0], SHAPES[1], SHAPES[3]].forEach(function (shape) {
+    [SHAPES[0], SHAPES[1], SHAPES[3], SHAPES[4]].forEach(function (shape) {
       chain = chain.then(function () {
         return open(browser, DEVICES[0], settingsFor(mode, shape.settings)).then(function (page) {
           var filename = datePrefix + '-' + mode + '-' + shape.name + '.png';
