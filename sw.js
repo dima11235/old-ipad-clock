@@ -10,7 +10,7 @@
   index.html changes.
 */
 
-var CACHE_NAME = 'retro-clock-v86';
+var CACHE_NAME = 'retro-clock-v88';
 var ASSETS = ['./', './index.html'].map(function (path) {
   return new URL(path, self.registration.scope).href;
 });
