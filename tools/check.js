@@ -287,19 +287,23 @@ function checkBrightness(browser) {
   });
 }
 
-/* One screenshot per mode, for the things a number cannot tell you. */
+/* Capture each mode with no calendar, the standard date, and the retro calendar. */
 function takeShots(browser) {
   var chain = Promise.resolve();
+  var today = new Date();
+  var datePrefix = String(today.getFullYear()) +
+    String(today.getMonth() + 1).padStart(2, '0') + String(today.getDate()).padStart(2, '0');
 
   if (!fs.existsSync(SHOTS_DIR)) {
     fs.mkdirSync(SHOTS_DIR);
   }
 
   MODES.forEach(function (mode) {
-    [SHAPES[0], SHAPES[1]].forEach(function (shape) {
+    [SHAPES[0], SHAPES[1], SHAPES[3]].forEach(function (shape) {
       chain = chain.then(function () {
         return open(browser, DEVICES[0], settingsFor(mode, shape.settings)).then(function (page) {
-          return page.screenshot({ path: path.join(SHOTS_DIR, mode + '-' + shape.name + '.png') })
+          var filename = datePrefix + '-' + mode + '-' + shape.name + '.png';
+          return page.screenshot({ path: path.join(SHOTS_DIR, filename) })
             .then(function () { return page.close(); });
         });
       });
